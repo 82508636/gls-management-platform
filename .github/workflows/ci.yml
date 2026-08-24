@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Backend tests
+        run: mvn --batch-mode --file backend/pom.xml test
+      - name: Frontend install
+        working-directory: frontend
+        run: npm ci
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build
+
+  security-e2e:
+    runs-on: ubuntu-latest
+    needs: unit-and-build
+    env:
+      KEYCLOAK_ADMIN: e2e-admin
+      KEYCLOAK_ADMIN_PASSWORD: e2e-admin-local-only
+      KEYCLOAK_BASE_URL: http://localhost:8180
+      KEYCLOAK_REALM: ltft
+      KEYCLOAK_JML_CLIENT_ID: ltft-jml-service
+      KEYCLOAK_JML_CLIENT_SECRET: local-jml-secret-change-me
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      DATABASE_URL: jdbc:postgresql://localhost:5432/gls_management
+      DATABASE_USERNAME: gls
+      DATABASE_PASSWORD: gls_local
+      E2E_APP_URL: http://localhost:5173
+      PLAYWRIGHT_EXECUTABLE_PATH: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend and E2E runtime
+        working-directory: frontend
+        run: |
+          npm ci
+          npm install --no-save playwright@1.62.1
+      - name: Start PostgreSQL and Keycloak
+        run: docker compose up -d --wait postgres keycloak
+      - name: Start backend
+        run: mvn --batch-mode --file backend/pom.xml spring-boot:run > /tmp/ltft-backend.log 2>&1 &
+      - name: Start frontend
+        working-directory: frontend
+        run: npm run dev -- --host 127.0.0.1 > /tmp/ltft-frontend.log 2>&1 &
+      - name: Wait for application
+        run: |
+          timeout 120 bash -c 'until curl --fail --silent http://localhost:8080/actuator/health; do sleep 2; done'
+          timeout 60 bash -c 'until curl --fail --silent http://localhost:5173; do sleep 2; done'
+      - name: Security and JML E2E
+        run: node scripts/security-e2e.mjs
+      - name: Verify JML audit persistence
+        run: |
+          audit=$(docker compose exec -T postgres psql -U gls -d gls_management -Atc \
+            "select string_agg(action, ',' order by occurred_at) || '|' || count(*) from identity_audit_events where target_username like 'e2e-jml-%' group by target_username order by max(occurred_at) desc limit 1")
+          test "$audit" = "JOINER,MOVER,LEAVER|3"
+      - name: Diagnostic logs
+        if: failure()
+        run: |
+          cat /tmp/ltft-backend.log || true
+          cat /tmp/ltft-frontend.log || true
+          docker compose logs keycloak postgres || true
+      - name: Stop local infrastructure
+        if: always()
+        run: docker compose down -v

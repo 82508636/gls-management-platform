@@ -1,0 +1,70 @@
+package pt.glsmanagement.platform.customer;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+public class CustomerService {
+    private final CustomerRepository repository;
+    private final CustomerCodeGenerator codeGenerator;
+
+    CustomerService(CustomerRepository repository, CustomerCodeGenerator codeGenerator) {
+        this.repository = repository;
+        this.codeGenerator = codeGenerator;
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerPageResponse list(int page, int requestedSize) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(requestedSize, 1), 50);
+        var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "shippingName"));
+        return CustomerPageResponse.from(repository.findAll(pageable));
+    }
+
+    @Transactional(readOnly = true)
+    public CustomerResponse get(UUID id) {
+        return CustomerResponse.from(find(id));
+    }
+
+    @Transactional
+    public CustomerResponse create(CustomerRequest request) {
+        var vatNumber = request.vatNumber().trim();
+        if (repository.existsByVatNumber(vatNumber)) {
+            throw new DuplicateCustomerVatNumberException(vatNumber);
+        }
+        var customerCode = codeGenerator.next(request.agency());
+        return CustomerResponse.from(repository.save(Customer.create(request, customerCode)));
+    }
+
+    @Transactional
+    public CustomerResponse update(UUID id, CustomerRequest request) {
+        var customer = find(id);
+        if (!customer.agency().equals(request.agency())) throw new IllegalArgumentException("Customer agency is immutable");
+        var vatNumber = request.vatNumber().trim();
+        if (repository.existsByVatNumberAndIdNot(vatNumber, id)) {
+            throw new DuplicateCustomerVatNumberException(vatNumber);
+        }
+        customer.updateDetails(request);
+        return CustomerResponse.from(customer);
+    }
+
+    @Transactional
+    public CustomerResponse updateStatus(UUID id, boolean active) {
+        var customer = find(id);
+        customer.setActive(active);
+        return CustomerResponse.from(customer);
+    }
+
+    @Transactional
+    public void delete(UUID id) {
+        repository.delete(find(id));
+    }
+
+    private Customer find(UUID id) {
+        return repository.findById(id).orElseThrow(() -> new CustomerNotFoundException(id));
+    }
+}

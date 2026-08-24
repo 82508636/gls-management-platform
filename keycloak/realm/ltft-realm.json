@@ -1,0 +1,53 @@
+{
+  "realm": "ltft",
+  "enabled": true,
+  "displayName": "LTFT Comand Center",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "ADMIN" },
+      { "name": "OPERATOR" },
+      { "name": "ACCOUNTING" },
+      { "name": "CUSTOMER" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "ltft-web",
+      "name": "LTFT Comand Center Web",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      }
+    },
+    {
+      "clientId": "ltft-jml-service",
+      "name": "LTFT JML Backend Service",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "local-jml-secret-change-me",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-ltft-jml-service",
+      "enabled": true,
+      "serviceAccountClientId": "ltft-jml-service",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "view-realm"]
+      }
+    }
+  ]
+}
