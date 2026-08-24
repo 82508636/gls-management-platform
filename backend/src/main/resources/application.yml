@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: ltft-comand-center
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gls_management}
+    username: ${DATABASE_USERNAME:gls}
+    password: ${DATABASE_PASSWORD:gls_local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/ltft}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+server:
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+ltft:
+  integrations:
+    vies:
+      base-url: ${VIES_BASE_URL:https://ec.europa.eu/taxation_customs/vies/rest-api}
+      connect-timeout: ${VIES_CONNECT_TIMEOUT:3s}
+      read-timeout: ${VIES_READ_TIMEOUT:5s}
+      max-concurrent-requests: ${VIES_MAX_CONCURRENT_REQUESTS:4}
+  identity:
+    keycloak:
+      base-url: ${KEYCLOAK_BASE_URL:http://localhost:8180}
+      realm: ${KEYCLOAK_REALM:ltft}
+      client-id: ${KEYCLOAK_JML_CLIENT_ID:ltft-jml-service}
+      client-secret: ${KEYCLOAK_JML_CLIENT_SECRET:local-jml-secret-change-me}

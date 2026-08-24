@@ -1,0 +1,51 @@
+package pt.glsmanagement.platform.identity;
+
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+
+@Service
+class IdentityLifecycleService {
+    private final KeycloakAdminClient keycloak;
+    private final IdentityAuditRepository audit;
+
+    IdentityLifecycleService(KeycloakAdminClient keycloak, IdentityAuditRepository audit) {
+        this.keycloak = keycloak;
+        this.audit = audit;
+    }
+
+    List<IdentityUserResponse> list() { return keycloak.listUsers(); }
+
+    @Transactional
+    IdentityUserResponse join(JoinerRequest request, Jwt actor) {
+        var user = keycloak.create(request);
+        record(actor, "JOINER", user, "", roles(user), "Utilizador criado e ativado");
+        return user;
+    }
+
+    @Transactional
+    IdentityUserResponse move(String id, MoverRequest request, Jwt actor) {
+        var before = keycloak.get(id);
+        var user = keycloak.move(id, request.role());
+        record(actor, "MOVER", user, roles(before), roles(user), "Perfis da plataforma substituídos");
+        return user;
+    }
+
+    @Transactional
+    IdentityUserResponse leave(String id, Jwt actor) {
+        var before = keycloak.get(id);
+        var user = keycloak.leave(id);
+        record(actor, "LEAVER", user, roles(before), roles(user), "Utilizador desativado e sessões terminadas");
+        return user;
+    }
+
+    private void record(Jwt actor, String action, IdentityUserResponse user, String previous, String next, String details) {
+        audit.save(IdentityAuditEvent.create(actor.getSubject(), actor.getClaimAsString("preferred_username"), action,
+                user.id(), user.username(), previous, next, details));
+    }
+
+    private static String roles(IdentityUserResponse user) {
+        return user.roles().stream().map(Enum::name).sorted().reduce((a, b) -> a + "," + b).orElse("");
+    }
+}
