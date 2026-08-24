@@ -15,7 +15,7 @@ type ServiceStatus = 'PENDING' | 'PAID' | 'ALL'
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 const GENERIC_LOAD_ERROR = 'Não foi possível carregar a informação. Tente novamente.'
 const GENERIC_SAVE_ERROR = 'Não foi possível guardar. Tente novamente.'
-const emptyForm: CustomerForm = { customerCode:'', abbreviation:'', shippingName:'', agency:'LTFT01', address:'', postalCode:'', locality:'', country:'PT', contactEmail:'', mobile:'', phone:'', billingCountry:'PT', vatNumber:'', billingLegalName:'', billingAddress:'', billingPostalCode:'', billingLocality:'', accountCode:'', billingReference:'', customerType:'COMPANY', responsibleName:'', billingEmail:'', defaultDocument:'INVOICE', exchangeRate:null, currency:'EUR', invoiceByPost:false, documentsByEmail:true, active:true }
+const emptyForm: CustomerForm = { customerCode:'', abbreviation:'', shippingName:'', agency:'LTFT01', address:'', postalCode:'', locality:'', country:'PT', contactEmail:'', mobile:'', phone:'', billingCountry:'PT', vatNumber:'', billingLegalName:'', billingAddress:'', billingPostalCode:'', billingLocality:'', accountCode:'', billingReference:'', customerType:'COMPANY', responsibleName:'', billingEmail:'', defaultDocument:'INVOICE', exchangeRate:null, currency:'EUR', invoiceByPost:false, documentsByEmail:true, active:false }
 
 function navigate(path: string) {
   window.history.pushState({}, '', path)

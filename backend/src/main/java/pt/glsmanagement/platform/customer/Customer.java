@@ -41,7 +41,7 @@ class Customer {
     @Column(name="updated_at", nullable=false) private OffsetDateTime updatedAt;
 
     protected Customer() {}
-    static Customer create(CustomerRequest request, String customerCode) { var c=new Customer(); c.id=UUID.randomUUID(); c.customerCode=customerCode; c.createdAt=OffsetDateTime.now(ZoneOffset.UTC); c.apply(request); return c; }
+    static Customer create(CustomerRequest request, String customerCode) { var c=new Customer(); c.id=UUID.randomUUID(); c.customerCode=customerCode; c.createdAt=OffsetDateTime.now(ZoneOffset.UTC); c.apply(request); c.active=false; return c; }
     void updateDetails(CustomerRequest request) { var previousActive=active; apply(request); active=previousActive; }
     void setActive(boolean active) { this.active=active; updatedAt=OffsetDateTime.now(ZoneOffset.UTC); }
     private void apply(CustomerRequest r) {

@@ -1,4 +1,6 @@
 package pt.glsmanagement.platform.customer;
 
-public record CustomerStatusRequest(boolean active) {
+import jakarta.validation.constraints.NotNull;
+
+public record CustomerStatusRequest(@NotNull Boolean active) {
 }

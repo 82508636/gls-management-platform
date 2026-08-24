@@ -77,6 +77,15 @@ class CustomerSecurityTest {
     }
 
     @Test
+    void rejectsStatusChangeWithoutAnExplicitState() throws Exception {
+        mockMvc.perform(patch("/api/customers/00000000-0000-0000-0000-000000000001/status")
+                        .with(jwtWithRole("ADMIN"))
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void rejectsAccountingCustomerDeletion() throws Exception {
         mockMvc.perform(delete("/api/customers/00000000-0000-0000-0000-000000000001")
                         .with(jwtWithRole("ACCOUNTING")))

@@ -49,6 +49,17 @@ class CustomerServiceTest {
     }
 
     @Test
+    void createsCustomerInactiveUntilAnAdministratorApprovesIt() {
+        var requestAskingForActiveCustomer = request("Cliente pendente", "LTFT01", "PT998");
+        when(codeGenerator.next("LTFT01")).thenReturn("100001");
+        when(repository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.create(requestAskingForActiveCustomer);
+
+        assertThat(result.active()).isFalse();
+    }
+
+    @Test
     void limitsCustomerPagesToFiftyItems() {
         Pageable expectedPage = PageRequest.of(0, 50, org.springframework.data.domain.Sort.by("shippingName").ascending());
         when(repository.findAll(expectedPage)).thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
