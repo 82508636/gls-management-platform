@@ -5,6 +5,7 @@ import { downloadPendingServicesPdf } from './pdfReport'
 import { AuthSession, initializeAuth } from './auth'
 import { AdminUsersPage } from './AdminUsersPage'
 import { CustomerFormFields, type VatValidationRequest, type VatValidationResult } from './CustomerFormFields'
+import { CollaboratorsPrototypePage, PickupPointsPage, RecipientsPage, SuppliersStandbyPage } from './EntitiesPages'
 import ltftLogoUrl from './assets/ltft-logo.jpg'
 import './styles.css'
 
@@ -23,7 +24,8 @@ function navigate(path: string) {
 }
 
 function Header({ auth }: { auth: AuthSession }) {
-  return <header><button className="brand-button" onClick={() => navigate('/clientes')}><span className="brand-mark">LTFT</span><span><strong>LTFT Comand Center</strong><small>Gestão comercial e financeira</small></span></button><details className="user-menu"><summary><strong>{auth.displayName}</strong><span className="menu-arrow" aria-hidden="true" /></summary><div className="user-dropdown"><div className="user-roles"><small>Perfis</small><span>{auth.roles.join(' · ')}</span></div>{auth.roles.includes('ADMIN') && <button className="admin-menu-link" onClick={() => navigate('/admin/utilizadores')}>Gerir utilizadores</button>}<button onClick={() => void auth.logout()}>Terminar sessão</button></div></details></header>
+  const canViewEntities = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
+  return <header><div className="header-left"><button className="brand-button" onClick={() => navigate('/clientes')}><span className="brand-mark">LTFT</span><span><strong>LTFT Comand Center</strong><small>Gestão comercial e financeira</small></span></button>{canViewEntities && <details className="entities-menu"><summary>Entidades <span className="menu-arrow" aria-hidden="true" /></summary><nav><button onClick={() => navigate('/clientes')}>Clientes</button><button onClick={() => navigate('/entidades/destinatarios')}>Destinatários</button><button onClick={() => navigate('/entidades/pontos-pickup')}>Pontos Pickup</button><button onClick={() => navigate('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>{auth.roles.includes('ADMIN') && <button onClick={() => navigate('/entidades/colaboradores')}>Colaboradores</button>}</nav></details>}</div><details className="user-menu"><summary><strong>{auth.displayName}</strong><span className="menu-arrow" aria-hidden="true" /></summary><div className="user-dropdown"><div className="user-roles"><small>Perfis</small><span>{auth.roles.join(' · ')}</span></div>{auth.roles.includes('ADMIN') && <button className="admin-menu-link" onClick={() => navigate('/admin/utilizadores')}>Gerir utilizadores</button>}<button onClick={() => void auth.logout()}>Terminar sessão</button></div></details></header>
 }
 
 function AccountPage({ customer, onBack }: { customer: Customer; onBack: () => void }) {
@@ -192,7 +194,13 @@ function App({ auth }: { auth: AuthSession }) {
   const canUseCustomerArea = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
   const canUseCustomerAccount = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
   const isAdminUsers = path === '/admin/utilizadores'
-  return <div className="app-shell"><Header auth={auth} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
+  const isRecipients = path === '/entidades/destinatarios'
+  const isPickupPoints = path === '/entidades/pontos-pickup'
+  const isSuppliers = path === '/entidades/fornecedores'
+  const isCollaborators = path === '/entidades/colaboradores'
+  const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaborators
+  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPrototypePage /> : null
+  return <div className="app-shell"><Header auth={auth} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaborators && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value) }
