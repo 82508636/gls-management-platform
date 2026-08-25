@@ -1,4 +1,4 @@
-import { FormEvent, StrictMode, useEffect, useMemo, useState } from 'react'
+import { FormEvent, StrictMode, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { Customer, CustomerService } from './domain'
 import { downloadPendingServicesPdf } from './pdfReport'
@@ -25,7 +25,40 @@ function navigate(path: string) {
 
 function Header({ auth }: { auth: AuthSession }) {
   const canViewEntities = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
-  return <header><div className="header-left"><button className="brand-button" onClick={() => navigate('/clientes')}><span className="brand-mark">LTFT</span><span><strong>LTFT Comand Center</strong><small>Gestão comercial e financeira</small></span></button>{canViewEntities && <details className="entities-menu"><summary>Entidades <span className="menu-arrow" aria-hidden="true" /></summary><nav><button onClick={() => navigate('/clientes')}>Clientes</button><button onClick={() => navigate('/entidades/destinatarios')}>Destinatários</button><button onClick={() => navigate('/entidades/pontos-pickup')}>Pontos Pickup</button><button onClick={() => navigate('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>{auth.roles.includes('ADMIN') && <button onClick={() => navigate('/entidades/colaboradores')}>Colaboradores</button>}</nav></details>}</div><details className="user-menu"><summary><strong>{auth.displayName}</strong><span className="menu-arrow" aria-hidden="true" /></summary><div className="user-dropdown"><div className="user-roles"><small>Perfis</small><span>{auth.roles.join(' · ')}</span></div>{auth.roles.includes('ADMIN') && <button className="admin-menu-link" onClick={() => navigate('/admin/utilizadores')}>Gerir utilizadores</button>}<button onClick={() => void auth.logout()}>Terminar sessão</button></div></details></header>
+  const entitiesMenuRef = useRef<HTMLDivElement>(null)
+  const [entitiesMenuOpen, setEntitiesMenuOpen] = useState(false)
+
+  function goToEntity(path: string) {
+    const menu = entitiesMenuRef.current
+    setEntitiesMenuOpen(false)
+    menu?.querySelector<HTMLElement>('.brand-trigger')?.focus()
+    navigate(path)
+  }
+
+  function brandContent() {
+    return <><span className="brand-mark">LTFT</span><span className="brand-copy"><strong>LTFT Comand Center</strong><small>Gestão comercial e financeira</small></span></>
+  }
+
+  return <header>
+    <div className="header-left">
+      {canViewEntities ? <div ref={entitiesMenuRef} className={`brand-entities-menu${entitiesMenuOpen ? ' is-open' : ''}`} onMouseEnter={() => setEntitiesMenuOpen(true)} onMouseLeave={() => setEntitiesMenuOpen(false)} onKeyDown={event => {
+        if (event.key === 'Escape') {
+          setEntitiesMenuOpen(false)
+          entitiesMenuRef.current?.querySelector<HTMLElement>('.brand-trigger')?.focus()
+        }
+      }}>
+        <button type="button" className="brand-trigger" aria-label="Abrir menu de Entidades" aria-haspopup="menu" aria-expanded={entitiesMenuOpen} onClick={() => setEntitiesMenuOpen(open => !open)}>{brandContent()}<span className="brand-menu-arrow" aria-hidden="true" /></button>
+        <nav aria-label="Páginas de Entidades">
+          <button onClick={() => goToEntity('/clientes')}>Clientes</button>
+          <button onClick={() => goToEntity('/entidades/destinatarios')}>Destinatários</button>
+          <button onClick={() => goToEntity('/entidades/pontos-pickup')}>Pontos Pickup</button>
+          <button onClick={() => goToEntity('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
+          {auth.roles.includes('ADMIN') && <button onClick={() => goToEntity('/entidades/colaboradores')}>Colaboradores</button>}
+        </nav>
+      </div> : <button className="brand-button" onClick={() => navigate('/clientes')}>{brandContent()}</button>}
+    </div>
+    <details className="user-menu"><summary><strong>{auth.displayName}</strong><span className="menu-arrow" aria-hidden="true" /></summary><div className="user-dropdown"><div className="user-roles"><small>Perfis</small><span>{auth.roles.join(' · ')}</span></div>{auth.roles.includes('ADMIN') && <button className="admin-menu-link" onClick={() => navigate('/admin/utilizadores')}>Gerir utilizadores</button>}<button onClick={() => void auth.logout()}>Terminar sessão</button></div></details>
+  </header>
 }
 
 function AccountPage({ customer, onBack }: { customer: Customer; onBack: () => void }) {
