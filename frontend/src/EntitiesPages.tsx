@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { AuthSession } from './auth'
 import { ContextualPageHeading } from './ContextualPageHeading'
+import type { AuditedReference } from './CollaboratorManagementPages'
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 
@@ -125,7 +126,7 @@ export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
   </main>
 }
 
-export function CollaboratorCreatePage() {
+export function CollaboratorCreatePage({ accountProfiles, professionalCategories, onManageProfiles, onManageCategories }: { accountProfiles: AuditedReference[]; professionalCategories: AuditedReference[]; onManageProfiles: () => void; onManageCategories: () => void }) {
   return <main className="workspace-page entities-page collaborator-page"><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
     <section className="panel collaborator-form">
       <div className="collaborator-top-layout">
@@ -133,7 +134,7 @@ export function CollaboratorCreatePage() {
           <section className="employee-section employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
             <Field label="Código" span="ident-code" disabled placeholder="A atribuir"/>
             <Field label="Nome completo *" span="ident-name"/>
-            <SelectField label="Perfil da conta *" className="ident-profile" options={['Selecionar…','Administrador','Operador','Contabilidade','Cliente']}/>
+            <SelectField label="Perfil da conta *" className="ident-profile" options={['Selecionar…', ...accountProfiles.filter(profile => profile.active).map(profile => profile.designation)]} manageHref="/admin/perfis" onManage={onManageProfiles}/>
             <label className="checkbox compact-check ident-active"><input type="checkbox" defaultChecked/> Ativo</label>
             <Field label="Cód. Abrev." span="ident-abbreviation"/>
             <SelectField label="Género" className="ident-gender" options={['Selecionar…','Feminino','Masculino','Outro','Prefiro não indicar']}/>
@@ -141,7 +142,7 @@ export function CollaboratorCreatePage() {
             <SelectField label="Estado civil" className="ident-civil-status" options={['Selecionar…','Solteiro/a','Casado/a','União de facto','Divorciado/a','Viúvo/a']}/>
             <Field label="Nacionalidade" span="ident-nationality" defaultValue="Portugal"/>
           </div></section>
-          <EmployeeSection title="Informação profissional"><Field label="Data de admissão" type="date"/><Field label="Data de demissão" type="date"/><SelectField label="Delegação principal *" options={['Selecionar…','LTFT01 · Fafe','LTFT02 · Taipas']}/><Field label="Cargo ou função"/><Field label="Categoria profissional"/><Field label="Departamento"/><Field label="Grupos de trabalho" span="span-2"/><Field label="E-mail da empresa" type="email" span="span-2"/><Field label="Telemóvel da empresa"/></EmployeeSection>
+          <EmployeeSection title="Informação profissional"><Field label="Data de admissão" type="date"/><Field label="Data de demissão" type="date"/><SelectField label="Delegação principal *" options={['Selecionar…','LTFT01 · Fafe','LTFT02 · Taipas']}/><Field label="Cargo ou função"/><SelectField label="Categoria profissional" options={['Selecionar…', ...professionalCategories.filter(category => category.active).map(category => category.designation)]} manageHref="/entidades/colaboradores/categorias-profissionais" onManage={onManageCategories}/><Field label="Departamento"/><Field label="Grupos de trabalho" span="span-2"/><Field label="E-mail da empresa" type="email" span="span-2"/><Field label="Telemóvel da empresa"/></EmployeeSection>
         </div>
         <aside className="collaborator-side-column"><label className="employee-photo">Fotografia<div className="photo-placeholder">Sem fotografia</div><input type="file" accept="image/*" /></label><section className="employee-notes"><h2>Notas e observações</h2><textarea rows={9}/></section></aside>
       </div>
@@ -156,5 +157,5 @@ export function SuppliersStandbyPage() { return <main className="workspace-page 
 
 function EmployeeSection({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) { return <section className={`employee-section ${className}`}><h2>{title}</h2><div className="employee-grid">{children}</div></section> }
 function Field({ label, span = '', ...props }: { label: string; span?: string } & React.InputHTMLAttributes<HTMLInputElement>) { return <label className={span}>{label}<input {...props}/></label> }
-function SelectField({ label, options, className = '' }: { label: string; options: string[]; className?: string }) { return <label className={className}>{label}<select>{options.map(option => <option key={option}>{option}</option>)}</select></label> }
+function SelectField({ label, options, className = '', manageHref, onManage }: { label: string; options: string[]; className?: string; manageHref?: string; onManage?: () => void }) { return <label className={className}><span className="employee-label-row"><span>{label}</span>{manageHref && onManage && <a href={manageHref} onClick={event => { event.preventDefault(); onManage() }}>Gerir</a>}</span><select>{options.map(option => <option key={option}>{option}</option>)}</select></label> }
 function schedule(point: PickupPoint) { const morning = point.morningOpen && point.morningClose ? `${point.morningOpen.slice(0,5)}–${point.morningClose.slice(0,5)}` : ''; const afternoon = point.afternoonOpen && point.afternoonClose ? `${point.afternoonOpen.slice(0,5)}–${point.afternoonClose.slice(0,5)}` : ''; return [morning, afternoon].filter(Boolean).join(' / ') || '—' }

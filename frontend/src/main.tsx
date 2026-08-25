@@ -6,6 +6,7 @@ import { AuthSession, initializeAuth } from './auth'
 import { AdminUsersPage } from './AdminUsersPage'
 import { CustomerFormFields, type VatValidationRequest, type VatValidationResult } from './CustomerFormFields'
 import { CollaboratorCreatePage, CollaboratorsPage, PickupPointsPage, RecipientsPage, SuppliersStandbyPage } from './EntitiesPages'
+import { initialAccountProfiles, initialProfessionalCategories, ReferenceManagementPage } from './CollaboratorManagementPages'
 import ltftLogoUrl from './assets/ltft-logo.jpg'
 import './styles.css'
 
@@ -236,6 +237,8 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
 function App({ auth }: { auth: AuthSession }) {
   const [path, setPath] = useState(window.location.pathname)
   const [apiCustomers, setApiCustomers] = useState<Customer[]>([])
+  const [accountProfiles, setAccountProfiles] = useState(initialAccountProfiles)
+  const [professionalCategories, setProfessionalCategories] = useState(initialProfessionalCategories)
   useEffect(() => { const update = () => setPath(window.location.pathname); window.addEventListener('popstate', update); return () => window.removeEventListener('popstate', update) }, [])
   async function loadCustomers(page: number): Promise<CustomerPage> {
     try {
@@ -260,9 +263,11 @@ function App({ auth }: { auth: AuthSession }) {
   const isSuppliers = path === '/entidades/fornecedores'
   const isCollaborators = path === '/entidades/colaboradores'
   const isCollaboratorCreate = path === '/entidades/colaboradores/create'
-  const isCollaboratorArea = isCollaborators || isCollaboratorCreate
+  const isAccountProfiles = path === '/admin/perfis'
+  const isProfessionalCategories = path === '/entidades/colaboradores/categorias-profissionais'
+  const isCollaboratorArea = isCollaborators || isCollaboratorCreate || isAccountProfiles || isProfessionalCategories
   const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaboratorArea
-  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isCollaboratorCreate && auth.roles.includes('ADMIN') ? <CollaboratorCreatePage /> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage onCreate={() => navigate('/entidades/colaboradores/create')} /> : null
+  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isAccountProfiles && auth.roles.includes('ADMIN') ? <ReferenceManagementPage actor={auth.displayName} title="Gerir perfis de conta" trail={['Administração','Perfis de conta']} description="Define os perfis disponíveis no registo de colaboradores. As permissões técnicas serão configuradas quando a matriz de acesso estiver aprovada." createTitle="Novo perfil" editTitle="Editar perfil" idHint="Ex.: DRIVER" items={accountProfiles} onChange={setAccountProfiles} onBack={() => navigate('/entidades/colaboradores/create')}/> : isProfessionalCategories && auth.roles.includes('ADMIN') ? <ReferenceManagementPage actor={auth.displayName} title="Gerir categorias profissionais" trail={['Entidades','Colaboradores','Categorias profissionais']} description="Mantém as categorias profissionais sem eliminar o respetivo histórico de auditoria." createTitle="Nova categoria profissional" editTitle="Editar categoria profissional" idHint="Ex.: 7" items={professionalCategories} onChange={setProfessionalCategories} onBack={() => navigate('/entidades/colaboradores/create')}/> : isCollaboratorCreate && auth.roles.includes('ADMIN') ? <CollaboratorCreatePage accountProfiles={accountProfiles} professionalCategories={professionalCategories} onManageProfiles={() => navigate('/admin/perfis')} onManageCategories={() => navigate('/entidades/colaboradores/categorias-profissionais')}/> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage onCreate={() => navigate('/entidades/colaboradores/create')} /> : null
   return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 
