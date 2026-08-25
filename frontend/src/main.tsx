@@ -5,7 +5,7 @@ import { downloadPendingServicesPdf } from './pdfReport'
 import { AuthSession, initializeAuth } from './auth'
 import { AdminUsersPage } from './AdminUsersPage'
 import { CustomerFormFields, type VatValidationRequest, type VatValidationResult } from './CustomerFormFields'
-import { CollaboratorsPrototypePage, PickupPointsPage, RecipientsPage, SuppliersStandbyPage } from './EntitiesPages'
+import { CollaboratorsPage, PickupPointsPage, RecipientsPage, SuppliersStandbyPage } from './EntitiesPages'
 import ltftLogoUrl from './assets/ltft-logo.jpg'
 import './styles.css'
 
@@ -260,7 +260,7 @@ function App({ auth }: { auth: AuthSession }) {
   const isSuppliers = path === '/entidades/fornecedores'
   const isCollaborators = path === '/entidades/colaboradores'
   const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaborators
-  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPrototypePage /> : null
+  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage /> : null
   return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaborators && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 

@@ -114,20 +114,30 @@ export function RecipientsPage({ auth }: { auth: AuthSession }) {
   return <main className="entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Destinatários</h1><p>Registos criados automaticamente a partir das recolhas e envios.</p></div><span className="info-chip">Sem criação manual</span></div><section className="panel list-panel">{error && <p className="error">{error}</p>}{loading ? <p>A carregar…</p> : recipients.length === 0 ? <div className="empty compact-empty"><strong>Ainda não existem destinatários.</strong><p>Quando for registada uma recolha ou um envio, o destinatário será guardado automaticamente e ficará disponível aqui.</p></div> : <div className="table-wrap customer-table"><table><thead><tr><th>Destinatário</th><th>Contacto</th><th>Morada</th><th>Última utilização</th></tr></thead><tbody>{recipients.map(recipient => <tr key={recipient.id}><td><strong>{recipient.name}</strong><small>{recipient.contactName || 'Sem pessoa de contacto'}</small></td><td>{recipient.mobile || recipient.phone || '—'}<small>{recipient.email || 'Sem email'}</small></td><td>{recipient.address}<small>{recipient.postalCode} {recipient.locality} · {recipient.country}</small></td><td>{new Intl.DateTimeFormat('pt-PT').format(new Date(recipient.lastUsedAt))}</td></tr>)}</tbody></table></div>}</section></main>
 }
 
-export function CollaboratorsPrototypePage() {
-  const [message, setMessage] = useState('')
-  function preview(event: FormEvent) { event.preventDefault(); setMessage('Protótipo: os dados não foram guardados. O backend será criado depois de validares os campos e regras.') }
-  return <main className="entities-page collaborator-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Colaboradores</h1><p>Protótipo visual para validação dos campos.</p></div><span className="prototype-chip">Apenas interface · sem gravação</span></div>
-    <form className="panel collaborator-form" onSubmit={preview}>
-      <EmployeeSection title="Identificação" className="employee-grid"><Field label="Código" disabled placeholder="A atribuir"/><Field label="Nome completo *" span="span-4"/><SelectField label="Perfil da conta *" options={['Selecionar…','Administrador','Operador','Contabilidade','Cliente']}/><label className="photo-field span-2">Fotografia<div className="photo-placeholder">Sem fotografia</div><input type="file" accept="image/*" /></label><Field label="Cód. Abrev."/><SelectField label="Género" options={['Selecionar…','Feminino','Masculino','Outro','Prefiro não indicar']}/><Field label="Data de nascimento" type="date"/><SelectField label="Estado civil" options={['Selecionar…','Solteiro/a','Casado/a','União de facto','Divorciado/a','Viúvo/a']}/><Field label="Nacionalidade" defaultValue="Portugal"/><label className="checkbox compact-check"><input type="checkbox" defaultChecked/> Ativo</label></EmployeeSection>
+export function CollaboratorsPage() {
+  return <main className="entities-page collaborator-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Colaboradores</h1></div></div>
+    <section className="panel collaborator-form">
+      <section className="employee-identification-layout">
+        <div className="employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
+          <Field label="Código" span="ident-code" disabled placeholder="A atribuir"/>
+          <Field label="Nome completo *" span="ident-name"/>
+          <SelectField label="Perfil da conta *" className="ident-profile" options={['Selecionar…','Administrador','Operador','Contabilidade','Cliente']}/>
+          <label className="checkbox compact-check ident-active"><input type="checkbox" defaultChecked/> Ativo</label>
+          <Field label="Cód. Abrev." span="ident-abbreviation"/>
+          <SelectField label="Género" className="ident-gender" options={['Selecionar…','Feminino','Masculino','Outro','Prefiro não indicar']}/>
+          <Field label="Data de nascimento" span="ident-birthdate" type="date"/>
+          <SelectField label="Estado civil" className="ident-civil-status" options={['Selecionar…','Solteiro/a','Casado/a','União de facto','Divorciado/a','Viúvo/a']}/>
+          <Field label="Nacionalidade" span="ident-nationality" defaultValue="Portugal"/>
+        </div></div>
+        <label className="employee-photo">Fotografia<div className="photo-placeholder">Sem fotografia</div><input type="file" accept="image/*" /></label>
+      </section>
       <EmployeeSection title="Informação profissional"><Field label="Data de admissão" type="date"/><Field label="Data de demissão" type="date"/><SelectField label="Delegação principal *" options={['Selecionar…','LTFT01 · Fafe','LTFT02 · Taipas']}/><Field label="Cargo ou função"/><Field label="Categoria profissional"/><Field label="Departamento"/><Field label="Grupos de trabalho" span="span-2"/><Field label="E-mail da empresa" type="email" span="span-2"/><Field label="Telemóvel da empresa"/></EmployeeSection>
       <EmployeeSection title="Contactos pessoais e residência"><Field label="Morada de residência" span="span-4"/><Field label="Código Postal"/><Field label="Localidade" span="span-2"/><Field label="País" defaultValue="Portugal"/><Field label="E-mail pessoal" type="email" span="span-2"/><Field label="Telemóvel pessoal"/><Field label="Telefone"/><Field label="Pessoa de contacto de emergência" span="span-2"/><Field label="Telemóvel SOS"/><Field label="Telefone SOS"/></EmployeeSection>
       <EmployeeSection title="Dados fiscais e familiares"><Field label="Documento de identificação" span="span-2"/><Field label="Contribuinte"/><Field label="N.º Segurança Social"/><SelectField label="Dependentes" options={['0','1','2','3','4','5+']}/><SelectField label="Rendimentos" options={['Não indicado','Categoria A','Categoria B','Outros']}/><SelectField label="Deficiência" options={['Não','Sim','Não indicado']}/></EmployeeSection>
       <EmployeeSection title="Formação académica"><SelectField label="Grau académico" options={['Selecionar…','Ensino básico','Ensino secundário','Licenciatura','Mestrado','Doutoramento','Outro']}/><Field label="Instituição de ensino"/><Field label="Curso / Formação" span="span-2"/><Field label="Avaliação"/></EmployeeSection>
       <EmployeeSection title="Informação bancária"><Field label="Nome do banco"/><Field label="IBAN" span="span-2"/><Field label="BIC / SWIFT"/></EmployeeSection>
       <EmployeeSection title="Redes sociais e observações"><Field label="LinkedIn" span="span-2"/><Field label="Facebook"/><Field label="X / Twitter"/><label className="span-4">Notas e observações<textarea rows={4}/></label></EmployeeSection>
-      {message && <p className="prototype-message" role="status">{message}</p>}<div className="actions"><button type="submit">Validar protótipo</button></div>
-    </form>
+    </section>
   </main>
 }
 
@@ -135,5 +145,5 @@ export function SuppliersStandbyPage() { return <main className="entities-page">
 
 function EmployeeSection({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) { return <section className={`employee-section ${className}`}><h2>{title}</h2><div className="employee-grid">{children}</div></section> }
 function Field({ label, span = '', ...props }: { label: string; span?: string } & React.InputHTMLAttributes<HTMLInputElement>) { return <label className={span}>{label}<input {...props}/></label> }
-function SelectField({ label, options }: { label: string; options: string[] }) { return <label>{label}<select>{options.map(option => <option key={option}>{option}</option>)}</select></label> }
+function SelectField({ label, options, className = '' }: { label: string; options: string[]; className?: string }) { return <label className={className}>{label}<select>{options.map(option => <option key={option}>{option}</option>)}</select></label> }
 function schedule(point: PickupPoint) { const morning = point.morningOpen && point.morningClose ? `${point.morningOpen.slice(0,5)}–${point.morningClose.slice(0,5)}` : ''; const afternoon = point.afternoonOpen && point.afternoonClose ? `${point.afternoonOpen.slice(0,5)}–${point.afternoonClose.slice(0,5)}` : ''; return [morning, afternoon].filter(Boolean).join(' / ') || '—' }
