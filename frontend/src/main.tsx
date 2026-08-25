@@ -101,7 +101,7 @@ function AccountPage({ customer, onBack }: { customer: Customer; onBack: () => v
   ), [services, status, dateFrom, dateTo])
   const pendingTotal = services.filter(service => service.status === 'PENDING').reduce((total, service) => total + service.amount, 0)
 
-  return <main>
+  return <main className="workspace-page account-page">
     <button className="back-link" onClick={onBack}>← Voltar aos clientes</button>
     <section className="account-hero">
       <div><p className="eyebrow">Conta do cliente</p><h1>{customer.shippingName}</h1><p>Cliente {customer.customerCode} · NIF {customer.vatNumber}</p></div>
@@ -214,7 +214,7 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
     return response.json() as Promise<VatValidationResult>
   }
 
-  return <main>
+  return <main className="workspace-page customers-page">
     <p className="eyebrow customers-heading">Clientes</p>
     <section className="panel list-panel">
       <div className="customer-toolbar">

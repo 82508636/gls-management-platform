@@ -61,7 +61,7 @@ export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: ()
     } catch { setError('Não foi possível desativar o utilizador. Tente novamente.') }
   }
 
-  return <main>
+  return <main className="workspace-page admin-users-page">
     <button className="back-link" onClick={onBack}>← Voltar aos clientes</button>
     <section className="hero"><div><p className="eyebrow">Administração</p><h1>Utilizadores</h1><p>Gestão Joiner–Mover–Leaver dos acessos à plataforma.</p></div><button onClick={() => setFormOpen(true)}>+ Novo utilizador</button></section>
     <section className="panel">

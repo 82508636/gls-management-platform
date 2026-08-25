@@ -77,7 +77,7 @@ export function PickupPointsPage({ auth }: { auth: AuthSession }) {
     } catch { setError('Não foi possível alterar o estado do Ponto Pickup.') }
   }
 
-  return <main className="entities-page">
+  return <main className="workspace-page entities-page">
     <div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Pontos Pickup</h1><p>Locais disponíveis para entrega e recolha de envios.</p></div>{canManage && <button onClick={create}>+ Novo ponto</button>}</div>
     <section className="panel list-panel">
       <div className="customer-toolbar"><label>Pesquisar<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Código, nome ou localidade…" /></label><span className="results-summary">{visible.length} de {points.length} pontos</span></div>
@@ -112,11 +112,11 @@ export function RecipientsPage({ auth }: { auth: AuthSession }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   useEffect(() => { void (async () => { try { const response = await auth.fetch(`${apiUrl}/recipients?page=0&size=50`); if (!response.ok) throw new Error(); const page = await response.json() as Page<Recipient>; setRecipients(page.content) } catch { setError('Não foi possível carregar os destinatários.') } finally { setLoading(false) } })() }, [])
-  return <main className="entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Destinatários</h1><p>Registos criados automaticamente a partir das recolhas e envios.</p></div><span className="info-chip">Sem criação manual</span></div><section className="panel list-panel">{error && <p className="error">{error}</p>}{loading ? <p>A carregar…</p> : recipients.length === 0 ? <div className="empty compact-empty"><strong>Ainda não existem destinatários.</strong><p>Quando for registada uma recolha ou um envio, o destinatário será guardado automaticamente e ficará disponível aqui.</p></div> : <div className="table-wrap customer-table"><table><thead><tr><th>Destinatário</th><th>Contacto</th><th>Morada</th><th>Última utilização</th></tr></thead><tbody>{recipients.map(recipient => <tr key={recipient.id}><td><strong>{recipient.name}</strong><small>{recipient.contactName || 'Sem pessoa de contacto'}</small></td><td>{recipient.mobile || recipient.phone || '—'}<small>{recipient.email || 'Sem email'}</small></td><td>{recipient.address}<small>{recipient.postalCode} {recipient.locality} · {recipient.country}</small></td><td>{new Intl.DateTimeFormat('pt-PT').format(new Date(recipient.lastUsedAt))}</td></tr>)}</tbody></table></div>}</section></main>
+  return <main className="workspace-page entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Destinatários</h1><p>Registos criados automaticamente a partir das recolhas e envios.</p></div><span className="info-chip">Sem criação manual</span></div><section className="panel list-panel">{error && <p className="error">{error}</p>}{loading ? <p>A carregar…</p> : recipients.length === 0 ? <div className="empty compact-empty"><strong>Ainda não existem destinatários.</strong><p>Quando for registada uma recolha ou um envio, o destinatário será guardado automaticamente e ficará disponível aqui.</p></div> : <div className="table-wrap customer-table"><table><thead><tr><th>Destinatário</th><th>Contacto</th><th>Morada</th><th>Última utilização</th></tr></thead><tbody>{recipients.map(recipient => <tr key={recipient.id}><td><strong>{recipient.name}</strong><small>{recipient.contactName || 'Sem pessoa de contacto'}</small></td><td>{recipient.mobile || recipient.phone || '—'}<small>{recipient.email || 'Sem email'}</small></td><td>{recipient.address}<small>{recipient.postalCode} {recipient.locality} · {recipient.country}</small></td><td>{new Intl.DateTimeFormat('pt-PT').format(new Date(recipient.lastUsedAt))}</td></tr>)}</tbody></table></div>}</section></main>
 }
 
 export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
-  return <main className="entities-page collaborator-list-page">
+  return <main className="workspace-page entities-page collaborator-list-page">
     <div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Colaboradores</h1></div><button onClick={onCreate}>+ Novo colaborador</button></div>
     <section className="panel list-panel">
       <div className="customer-toolbar"><div className="toolbar-actions"><label>Código ou colaborador<input placeholder="Pesquisar…" /></label><label>Estado<select defaultValue="ALL"><option value="ALL">Todos</option><option value="ACTIVE">Ativos</option><option value="INACTIVE">Inativos</option></select></label></div><span className="results-summary">0 colaboradores</span></div>
@@ -126,7 +126,7 @@ export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
 }
 
 export function CollaboratorCreatePage() {
-  return <main className="entities-page collaborator-page"><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
+  return <main className="workspace-page entities-page collaborator-page"><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
     <section className="panel collaborator-form">
       <div className="collaborator-top-layout">
         <div className="collaborator-top-main">
@@ -152,7 +152,7 @@ export function CollaboratorCreatePage() {
   </main>
 }
 
-export function SuppliersStandbyPage() { return <main className="entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Fornecedores</h1></div><span className="info-chip">Stand by</span></div><section className="panel empty compact-empty"><strong>Funcionalidade em preparação.</strong><p>Não foram criados dados, páginas de manutenção ou endpoints para fornecedores.</p></section></main> }
+export function SuppliersStandbyPage() { return <main className="workspace-page entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Fornecedores</h1></div><span className="info-chip">Stand by</span></div><section className="panel empty compact-empty"><strong>Funcionalidade em preparação.</strong><p>Não foram criados dados, páginas de manutenção ou endpoints para fornecedores.</p></section></main> }
 
 function EmployeeSection({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) { return <section className={`employee-section ${className}`}><h2>{title}</h2><div className="employee-grid">{children}</div></section> }
 function Field({ label, span = '', ...props }: { label: string; span?: string } & React.InputHTMLAttributes<HTMLInputElement>) { return <label className={span}>{label}<input {...props}/></label> }
