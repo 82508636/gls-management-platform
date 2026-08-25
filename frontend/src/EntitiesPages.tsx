@@ -114,8 +114,18 @@ export function RecipientsPage({ auth }: { auth: AuthSession }) {
   return <main className="entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Destinatários</h1><p>Registos criados automaticamente a partir das recolhas e envios.</p></div><span className="info-chip">Sem criação manual</span></div><section className="panel list-panel">{error && <p className="error">{error}</p>}{loading ? <p>A carregar…</p> : recipients.length === 0 ? <div className="empty compact-empty"><strong>Ainda não existem destinatários.</strong><p>Quando for registada uma recolha ou um envio, o destinatário será guardado automaticamente e ficará disponível aqui.</p></div> : <div className="table-wrap customer-table"><table><thead><tr><th>Destinatário</th><th>Contacto</th><th>Morada</th><th>Última utilização</th></tr></thead><tbody>{recipients.map(recipient => <tr key={recipient.id}><td><strong>{recipient.name}</strong><small>{recipient.contactName || 'Sem pessoa de contacto'}</small></td><td>{recipient.mobile || recipient.phone || '—'}<small>{recipient.email || 'Sem email'}</small></td><td>{recipient.address}<small>{recipient.postalCode} {recipient.locality} · {recipient.country}</small></td><td>{new Intl.DateTimeFormat('pt-PT').format(new Date(recipient.lastUsedAt))}</td></tr>)}</tbody></table></div>}</section></main>
 }
 
-export function CollaboratorsPage() {
-  return <main className="entities-page collaborator-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Colaboradores</h1></div></div>
+export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
+  return <main className="entities-page collaborator-list-page">
+    <div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Colaboradores</h1></div><button onClick={onCreate}>+ Novo colaborador</button></div>
+    <section className="panel list-panel">
+      <div className="customer-toolbar"><div className="toolbar-actions"><label>Código ou colaborador<input placeholder="Pesquisar…" /></label><label>Estado<select defaultValue="ALL"><option value="ALL">Todos</option><option value="ACTIVE">Ativos</option><option value="INACTIVE">Inativos</option></select></label></div><span className="results-summary">0 colaboradores</span></div>
+      <div className="table-wrap customer-table"><table><thead><tr><th>Código</th><th>Nome completo</th><th>Perfil</th><th>Delegação</th><th>Contactos</th><th>Estado</th><th>Ações</th></tr></thead><tbody><tr><td className="collaborator-empty-cell" colSpan={7}><strong>Ainda não existem colaboradores.</strong><small>Utiliza “+ Novo colaborador” para preparar um novo registo.</small></td></tr></tbody></table></div>
+    </section>
+  </main>
+}
+
+export function CollaboratorCreatePage({ onBack }: { onBack: () => void }) {
+  return <main className="entities-page collaborator-page"><button className="back-link" onClick={onBack}>← Voltar aos colaboradores</button><div className="page-heading"><div><p className="eyebrow">Entidades · Colaboradores</p><h1>Adicionar colaborador</h1></div></div>
     <section className="panel collaborator-form">
       <section className="employee-identification-layout">
         <div className="employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
