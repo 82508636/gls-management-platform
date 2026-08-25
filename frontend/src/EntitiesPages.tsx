@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { AuthSession } from './auth'
+import { ContextualPageHeading } from './ContextualPageHeading'
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 
@@ -125,7 +126,7 @@ export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
 }
 
 export function CollaboratorCreatePage({ onBack }: { onBack: () => void }) {
-  return <main className="entities-page collaborator-page"><button className="back-link" onClick={onBack}>← Voltar aos colaboradores</button><div className="page-heading"><div><p className="eyebrow">Entidades · Colaboradores</p><h1>Adicionar colaborador</h1></div></div>
+  return <main className="entities-page collaborator-page"><button className="back-link" onClick={onBack}>← Voltar aos colaboradores</button><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
     <section className="panel collaborator-form">
       <section className="employee-identification-layout">
         <div className="employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
