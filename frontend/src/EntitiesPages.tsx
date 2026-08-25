@@ -128,26 +128,26 @@ export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
 export function CollaboratorCreatePage() {
   return <main className="entities-page collaborator-page"><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
     <section className="panel collaborator-form">
-      <section className="employee-identification-layout">
-        <div className="employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
-          <Field label="Código" span="ident-code" disabled placeholder="A atribuir"/>
-          <Field label="Nome completo *" span="ident-name"/>
-          <SelectField label="Perfil da conta *" className="ident-profile" options={['Selecionar…','Administrador','Operador','Contabilidade','Cliente']}/>
-          <label className="checkbox compact-check ident-active"><input type="checkbox" defaultChecked/> Ativo</label>
-          <Field label="Cód. Abrev." span="ident-abbreviation"/>
-          <SelectField label="Género" className="ident-gender" options={['Selecionar…','Feminino','Masculino','Outro','Prefiro não indicar']}/>
-          <Field label="Data de nascimento" span="ident-birthdate" type="date"/>
-          <SelectField label="Estado civil" className="ident-civil-status" options={['Selecionar…','Solteiro/a','Casado/a','União de facto','Divorciado/a','Viúvo/a']}/>
-          <Field label="Nacionalidade" span="ident-nationality" defaultValue="Portugal"/>
-        </div></div>
-        <label className="employee-photo">Fotografia<div className="photo-placeholder">Sem fotografia</div><input type="file" accept="image/*" /></label>
-      </section>
-      <EmployeeSection title="Informação profissional"><Field label="Data de admissão" type="date"/><Field label="Data de demissão" type="date"/><SelectField label="Delegação principal *" options={['Selecionar…','LTFT01 · Fafe','LTFT02 · Taipas']}/><Field label="Cargo ou função"/><Field label="Categoria profissional"/><Field label="Departamento"/><Field label="Grupos de trabalho" span="span-2"/><Field label="E-mail da empresa" type="email" span="span-2"/><Field label="Telemóvel da empresa"/></EmployeeSection>
-      <EmployeeSection title="Contactos pessoais e residência"><Field label="Morada de residência" span="span-4"/><Field label="Código Postal"/><Field label="Localidade" span="span-2"/><Field label="País" defaultValue="Portugal"/><Field label="E-mail pessoal" type="email" span="span-2"/><Field label="Telemóvel pessoal"/><Field label="Telefone"/><Field label="Pessoa de contacto de emergência" span="span-2"/><Field label="Telemóvel SOS"/><Field label="Telefone SOS"/></EmployeeSection>
-      <EmployeeSection title="Dados fiscais e familiares"><Field label="Documento de identificação" span="span-2"/><Field label="Contribuinte"/><Field label="N.º Segurança Social"/><SelectField label="Dependentes" options={['0','1','2','3','4','5+']}/><SelectField label="Rendimentos" options={['Não indicado','Categoria A','Categoria B','Outros']}/><SelectField label="Deficiência" options={['Não','Sim','Não indicado']}/></EmployeeSection>
-      <EmployeeSection title="Formação académica"><SelectField label="Grau académico" options={['Selecionar…','Ensino básico','Ensino secundário','Licenciatura','Mestrado','Doutoramento','Outro']}/><Field label="Instituição de ensino"/><Field label="Curso / Formação" span="span-2"/><Field label="Avaliação"/></EmployeeSection>
-      <EmployeeSection title="Informação bancária"><Field label="Nome do banco"/><Field label="IBAN" span="span-2"/><Field label="BIC / SWIFT"/></EmployeeSection>
-      <EmployeeSection title="Redes sociais e observações"><Field label="LinkedIn" span="span-2"/><Field label="Facebook"/><Field label="X / Twitter"/><label className="span-4">Notas e observações<textarea rows={4}/></label></EmployeeSection>
+      <div className="collaborator-top-layout">
+        <div className="collaborator-top-main">
+          <section className="employee-section employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
+            <Field label="Código" span="ident-code" disabled placeholder="A atribuir"/>
+            <Field label="Nome completo *" span="ident-name"/>
+            <SelectField label="Perfil da conta *" className="ident-profile" options={['Selecionar…','Administrador','Operador','Contabilidade','Cliente']}/>
+            <label className="checkbox compact-check ident-active"><input type="checkbox" defaultChecked/> Ativo</label>
+            <Field label="Cód. Abrev." span="ident-abbreviation"/>
+            <SelectField label="Género" className="ident-gender" options={['Selecionar…','Feminino','Masculino','Outro','Prefiro não indicar']}/>
+            <Field label="Data de nascimento" span="ident-birthdate" type="date"/>
+            <SelectField label="Estado civil" className="ident-civil-status" options={['Selecionar…','Solteiro/a','Casado/a','União de facto','Divorciado/a','Viúvo/a']}/>
+            <Field label="Nacionalidade" span="ident-nationality" defaultValue="Portugal"/>
+          </div></section>
+          <EmployeeSection title="Informação profissional"><Field label="Data de admissão" type="date"/><Field label="Data de demissão" type="date"/><SelectField label="Delegação principal *" options={['Selecionar…','LTFT01 · Fafe','LTFT02 · Taipas']}/><Field label="Cargo ou função"/><Field label="Categoria profissional"/><Field label="Departamento"/><Field label="Grupos de trabalho" span="span-2"/><Field label="E-mail da empresa" type="email" span="span-2"/><Field label="Telemóvel da empresa"/></EmployeeSection>
+        </div>
+        <aside className="collaborator-side-column"><label className="employee-photo">Fotografia<div className="photo-placeholder">Sem fotografia</div><input type="file" accept="image/*" /></label><section className="employee-notes"><h2>Notas e observações</h2><textarea rows={9}/></section></aside>
+      </div>
+      <div className="collaborator-detail-layout"><EmployeeSection title="Contactos pessoais e residência" className="collaborator-contact-section"><Field label="Morada de residência" span="span-4"/><Field label="Código Postal"/><Field label="Localidade" span="span-2"/><Field label="País" defaultValue="Portugal"/><Field label="E-mail pessoal" type="email" span="span-2"/><Field label="Telemóvel pessoal"/><Field label="Telefone"/><Field label="Pessoa de contacto de emergência" span="span-2"/><Field label="Telemóvel SOS"/><Field label="Telefone SOS"/></EmployeeSection><EmployeeSection title="Dados fiscais e familiares" className="collaborator-fiscal-section"><Field label="Documento de identificação" span="span-2"/><Field label="Contribuinte"/><Field label="N.º Segurança Social"/><SelectField label="Dependentes" options={['0','1','2','3','4','5+']}/><SelectField label="Rendimentos" options={['Não indicado','Categoria A','Categoria B','Outros']}/><SelectField label="Deficiência" options={['Não','Sim','Não indicado']}/></EmployeeSection></div>
+      <div className="collaborator-detail-layout"><EmployeeSection title="Formação académica" className="collaborator-academic-section"><SelectField label="Grau académico" options={['Selecionar…','Ensino básico','Ensino secundário','Licenciatura','Mestrado','Doutoramento','Outro']}/><Field label="Instituição de ensino"/><Field label="Curso / Formação" span="span-2"/><Field label="Avaliação"/></EmployeeSection><EmployeeSection title="Informação bancária" className="collaborator-bank-section"><Field label="Nome do banco"/><Field label="IBAN" span="span-2"/><Field label="BIC / SWIFT"/></EmployeeSection></div>
+      <EmployeeSection title="Redes sociais"><Field label="LinkedIn" span="span-2"/><Field label="Facebook"/><Field label="X / Twitter"/></EmployeeSection>
     </section>
   </main>
 }
