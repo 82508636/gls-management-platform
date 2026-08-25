@@ -113,7 +113,7 @@ async function testRole(browser, role) {
       return
     }
 
-    await page.getByText('Clientes', { exact: true }).first().waitFor()
+    await page.locator('main .customers-heading').filter({ hasText: 'Clientes' }).waitFor()
     const newCustomerCount = await page.getByRole('button', { name: '+ Novo', exact: true }).count()
     assert(newCustomerCount === (role === 'ADMIN' || role === 'OPERATOR' ? 1 : 0), `${role}: permissão de criação de clientes incorreta.`)
 
