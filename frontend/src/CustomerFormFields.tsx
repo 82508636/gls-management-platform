@@ -72,10 +72,10 @@ export function CustomerFormFields({ form, editing, update, validateVat }: Props
         <label className="col-2">Abrev.<input maxLength={30} value={form.abbreviation ?? ''} onChange={event => update('abbreviation', event.target.value)} /></label>
         <label className="col-5">Designação para Expedição *<input autoFocus required maxLength={200} value={form.shippingName} onChange={event => update('shippingName', event.target.value)} /></label>
         <label className="col-3">Agência *<select required disabled={editing} value={form.agency} onChange={event => update('agency', event.target.value as Form['agency'])}><option value="LTFT01">[LTFT01] Fafe</option><option value="LTFT02">[LTFT02] Taipas</option></select><small>{editing ? 'Não alterável após criação' : form.agency === 'LTFT01' ? 'Código iniciado por 1' : 'Código iniciado por 2'}</small></label>
-        <label className="col-12">Morada<input value={form.address ?? ''} onChange={event => update('address', event.target.value)} /></label>
-        <label className="col-2">Código Postal<input maxLength={20} value={form.postalCode ?? ''} onChange={event => update('postalCode', event.target.value)} /></label>
-        <label className="col-7">Localidade / Município<input maxLength={120} value={form.locality ?? ''} onChange={event => update('locality', event.target.value)} /></label>
-        <label className="col-3">País<select value={form.country ?? 'PT'} onChange={event => update('country', event.target.value)}>{countries.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>
+        <label className="col-12">Morada *<input required maxLength={500} value={form.address ?? ''} onChange={event => update('address', event.target.value)} /></label>
+        <label className="col-2">Código Postal *<input required maxLength={20} value={form.postalCode ?? ''} onChange={event => update('postalCode', event.target.value)} /></label>
+        <label className="col-7">Localidade / Município *<input required maxLength={120} value={form.locality ?? ''} onChange={event => update('locality', event.target.value)} /></label>
+        <label className="col-3">País *<select required value={form.country ?? 'PT'} onChange={event => update('country', event.target.value)}>{countries.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>
         <label className="col-6">Email de contacto<input type="email" value={form.contactEmail ?? ''} onChange={event => update('contactEmail', event.target.value)} /></label>
         <label className="col-3">Telemóvel<input value={form.mobile ?? ''} onChange={event => update('mobile', event.target.value)} /></label>
         <label className="col-3">Telefone<input value={form.phone ?? ''} onChange={event => update('phone', event.target.value)} /></label>

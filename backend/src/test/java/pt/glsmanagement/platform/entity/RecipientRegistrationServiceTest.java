@@ -27,13 +27,44 @@ class RecipientRegistrationServiceTest {
 
         var result = service.registerFromShipment(input);
 
-        assertThat(result.name()).isEqualTo("Loja Destino");
+        assertThat(result.code()).isNull();
+        assertThat(result.designation()).isEqualTo("Loja Destino");
         assertThat(result.country()).isEqualTo("PT");
         verify(repository).save(any(Recipient.class));
     }
 
+    @Test
+    void storesTheCustomerCodeWhenRegisteringFromCustomerData() {
+        var input = new RecipientRegistration("100123", "Cliente Fafe", null, "Rua Central 1", "4820-001", "Fafe",
+                "PT", "cliente@example.test", "253000001", "910000001");
+        when(repository.findByDeduplicationKey(anyString())).thenReturn(Optional.empty());
+        when(repository.save(any(Recipient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.registerFromCustomer(input);
+
+        assertThat(result.code()).isEqualTo("100123");
+        assertThat(result.designation()).isEqualTo("Cliente Fafe");
+    }
+
+    @Test
+    void keepsCustomersWithTheSameAddressAsSeparateRecipients() {
+        var first = new RecipientRegistration("100123", "Cliente Fafe", null, "Rua Central 1", "4820-001", "Fafe",
+                "PT", null, null, null);
+        var second = new RecipientRegistration("100124", "Cliente Fafe", null, "Rua Central 1", "4820-001", "Fafe",
+                "PT", null, null, null);
+        when(repository.findByDeduplicationKey(anyString())).thenReturn(Optional.empty());
+        when(repository.save(any(Recipient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.registerFromCustomer(first);
+        service.registerFromCustomer(second);
+
+        var keys = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(repository, org.mockito.Mockito.times(2)).findByDeduplicationKey(keys.capture());
+        assertThat(keys.getAllValues()).doesNotHaveDuplicates();
+    }
+
     private static RecipientRegistration input() {
-        return new RecipientRegistration("Loja Destino", "Ana Silva", "Rua do Mercado 7", "4700-001", "Braga", "pt",
+        return new RecipientRegistration(null, "Loja Destino", "Ana Silva", "Rua do Mercado 7", "4700-001", "Braga", "pt",
                 "destino@example.test", null, "910000001");
     }
 }

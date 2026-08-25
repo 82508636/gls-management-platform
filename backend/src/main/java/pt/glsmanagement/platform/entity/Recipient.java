@@ -14,7 +14,8 @@ import java.util.UUID;
 class Recipient {
     @Id private UUID id;
     @Column(name = "deduplication_key", nullable = false, unique = true, length = 64) private String deduplicationKey;
-    @Column(nullable = false, length = 200) private String name;
+    @Column(length = 30) private String code;
+    @Column(nullable = false, length = 200) private String designation;
     @Column(name = "contact_name", length = 200) private String contactName;
     @Column(nullable = false, length = 500) private String address;
     @Column(name = "postal_code", nullable = false, length = 20) private String postalCode;
@@ -41,7 +42,9 @@ class Recipient {
     void reuse(RecipientRegistration input) { apply(input); }
 
     private void apply(RecipientRegistration input) {
-        name = input.name().trim(); contactName = optional(input.contactName()); address = input.address().trim();
+        var suppliedCode = optional(input.code());
+        if (suppliedCode != null) code = suppliedCode;
+        designation = input.designation().trim(); contactName = optional(input.contactName()); address = input.address().trim();
         postalCode = input.postalCode().trim(); locality = input.locality().trim(); country = input.country().trim().toUpperCase();
         email = optional(input.email()); phone = optional(input.phone()); mobile = optional(input.mobile());
         updatedAt = OffsetDateTime.now(ZoneOffset.UTC); lastUsedAt = updatedAt;
@@ -49,7 +52,8 @@ class Recipient {
 
     private static String optional(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 
-    UUID id() { return id; } String name() { return name; } String contactName() { return contactName; }
+    UUID id() { return id; } String code() { return code; } String designation() { return designation; }
+    String contactName() { return contactName; }
     String address() { return address; } String postalCode() { return postalCode; } String locality() { return locality; }
     String country() { return country; } String email() { return email; } String phone() { return phone; }
     String mobile() { return mobile; } OffsetDateTime lastUsedAt() { return lastUsedAt; }

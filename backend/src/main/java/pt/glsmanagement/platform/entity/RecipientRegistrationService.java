@@ -21,6 +21,18 @@ public class RecipientRegistrationService {
 
     @Transactional
     public RecipientResponse registerFromShipment(@Valid RecipientRegistration input) {
+        return register(input);
+    }
+
+    @Transactional
+    public RecipientResponse registerFromCustomer(@Valid RecipientRegistration input) {
+        if (input.code() == null || input.code().isBlank()) {
+            throw new IllegalArgumentException("Customer recipient code is required");
+        }
+        return register(input);
+    }
+
+    private RecipientResponse register(RecipientRegistration input) {
         var key = key(input);
         var recipient = repository.findByDeduplicationKey(key).orElseGet(() -> Recipient.create(key, input));
         recipient.reuse(input);
@@ -35,8 +47,10 @@ public class RecipientRegistrationService {
     }
 
     private static String key(RecipientRegistration input) {
-        var normalized = String.join("|", normalize(input.name()), normalize(input.address()),
-                normalize(input.postalCode()), normalize(input.locality()), normalize(input.country()));
+        var normalized = input.code() == null || input.code().isBlank()
+                ? String.join("|", "RECIPIENT", normalize(input.designation()), normalize(input.address()),
+                        normalize(input.postalCode()), normalize(input.locality()), normalize(input.country()))
+                : String.join("|", "CUSTOMER", normalize(input.code()));
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(normalized.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {

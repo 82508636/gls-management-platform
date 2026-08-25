@@ -8,12 +8,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import pt.glsmanagement.platform.entity.RecipientRegistration;
+import pt.glsmanagement.platform.entity.RecipientRegistrationService;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceTest {
@@ -22,6 +25,9 @@ class CustomerServiceTest {
 
     @Mock
     private CustomerCodeGenerator codeGenerator;
+
+    @Mock
+    private RecipientRegistrationService recipientRegistrationService;
 
     @InjectMocks
     private CustomerService service;
@@ -34,6 +40,7 @@ class CustomerServiceTest {
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(DuplicateCustomerVatNumberException.class)
                 .hasMessageContaining("PT123");
+        verify(recipientRegistrationService, never()).registerFromCustomer(any());
     }
 
     @Test
@@ -46,6 +53,14 @@ class CustomerServiceTest {
 
         assertThat(result.customerCode()).isEqualTo("200001");
         verify(codeGenerator).next("LTFT02");
+        var recipient = org.mockito.ArgumentCaptor.forClass(RecipientRegistration.class);
+        verify(recipientRegistrationService).registerFromCustomer(recipient.capture());
+        assertThat(recipient.getValue().code()).isEqualTo("200001");
+        assertThat(recipient.getValue().designation()).isEqualTo("Cliente Taipas");
+        assertThat(recipient.getValue().address()).isEqualTo("Rua do Cliente 1");
+        assertThat(recipient.getValue().postalCode()).isEqualTo("4800-001");
+        assertThat(recipient.getValue().locality()).isEqualTo("Guimarães");
+        assertThat(recipient.getValue().country()).isEqualTo("PT");
     }
 
     @Test
@@ -72,7 +87,7 @@ class CustomerServiceTest {
 
     private static CustomerRequest request(String shippingName, String agency, String vatNumber) {
         return new CustomerRequest(
-                null, null, shippingName, agency, null, null, null, "PT", null, null, null,
+                null, null, shippingName, agency, "Rua do Cliente 1", "4800-001", "Guimarães", "PT", null, null, null,
                 "PT", vatNumber, null, null, null, null, null, null,
                 CustomerRequest.CustomerType.COMPANY, null, null, "INVOICE", null, "EUR",
                 false, true, true

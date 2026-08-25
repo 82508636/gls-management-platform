@@ -4,6 +4,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pt.glsmanagement.platform.entity.RecipientRegistration;
+import pt.glsmanagement.platform.entity.RecipientRegistrationService;
 
 import java.util.UUID;
 
@@ -11,10 +13,13 @@ import java.util.UUID;
 public class CustomerService {
     private final CustomerRepository repository;
     private final CustomerCodeGenerator codeGenerator;
+    private final RecipientRegistrationService recipientRegistrationService;
 
-    CustomerService(CustomerRepository repository, CustomerCodeGenerator codeGenerator) {
+    CustomerService(CustomerRepository repository, CustomerCodeGenerator codeGenerator,
+                    RecipientRegistrationService recipientRegistrationService) {
         this.repository = repository;
         this.codeGenerator = codeGenerator;
+        this.recipientRegistrationService = recipientRegistrationService;
     }
 
     @Transactional(readOnly = true)
@@ -37,7 +42,12 @@ public class CustomerService {
             throw new DuplicateCustomerVatNumberException(vatNumber);
         }
         var customerCode = codeGenerator.next(request.agency());
-        return CustomerResponse.from(repository.save(Customer.create(request, customerCode)));
+        var customer = repository.save(Customer.create(request, customerCode));
+        recipientRegistrationService.registerFromCustomer(new RecipientRegistration(
+                customer.customerCode(), customer.shippingName(), null, customer.address(), customer.postalCode(),
+                customer.locality(), customer.country(), customer.contactEmail(), customer.phone(), customer.mobile()
+        ));
+        return CustomerResponse.from(customer);
     }
 
     @Transactional
