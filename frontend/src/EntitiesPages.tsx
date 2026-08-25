@@ -125,8 +125,8 @@ export function CollaboratorsPage({ onCreate }: { onCreate: () => void }) {
   </main>
 }
 
-export function CollaboratorCreatePage({ onBack }: { onBack: () => void }) {
-  return <main className="entities-page collaborator-page"><button className="back-link" onClick={onBack}>← Voltar aos colaboradores</button><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
+export function CollaboratorCreatePage() {
+  return <main className="entities-page collaborator-page"><ContextualPageHeading trail={['Entidades','Colaboradores']} title="Adicionar colaborador" />
     <section className="panel collaborator-form">
       <section className="employee-identification-layout">
         <div className="employee-identification-main"><h2>Identificação</h2><div className="employee-identification-grid">
