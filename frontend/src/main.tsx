@@ -23,11 +23,12 @@ function navigate(path: string) {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
-function Header({ auth }: { auth: AuthSession }) {
+function Header({ auth, path }: { auth: AuthSession; path: string }) {
   const canViewEntities = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
   const entitiesMenuRef = useRef<HTMLDivElement>(null)
   const entitiesMenuCloseTimer = useRef<number | undefined>(undefined)
   const [entitiesMenuOpen, setEntitiesMenuOpen] = useState(false)
+  const [entitiesExpanded, setEntitiesExpanded] = useState(true)
 
   useEffect(() => () => window.clearTimeout(entitiesMenuCloseTimer.current), [])
 
@@ -41,11 +42,15 @@ function Header({ auth }: { auth: AuthSession }) {
     entitiesMenuCloseTimer.current = window.setTimeout(() => setEntitiesMenuOpen(false), delay)
   }
 
-  function goToEntity(path: string) {
+  function goToPage(targetPath: string) {
     const menu = entitiesMenuRef.current
     closeEntitiesMenu()
     menu?.querySelector<HTMLElement>('.brand-trigger')?.focus()
-    navigate(path)
+    navigate(targetPath)
+  }
+
+  function isCurrentPage(targetPath: string) {
+    return targetPath === '/clientes' ? path === '/clientes' || path.startsWith('/clientes/') : path === targetPath
   }
 
   function brandContent() {
@@ -60,18 +65,22 @@ function Header({ auth }: { auth: AuthSession }) {
           entitiesMenuRef.current?.querySelector<HTMLElement>('.brand-trigger')?.focus()
         }
       }}>
-        <button type="button" className="brand-trigger" aria-label="Abrir menu de Entidades" aria-haspopup="menu" aria-expanded={entitiesMenuOpen} onClick={() => setEntitiesMenuOpen(open => !open)}>{brandContent()}<span className="brand-menu-arrow" aria-hidden="true" /></button>
-        <nav className="entity-drawer" aria-label="Páginas de Entidades" aria-hidden={!entitiesMenuOpen}>
+        <button type="button" className="brand-trigger" aria-label="Abrir menu de navegação" aria-haspopup="menu" aria-expanded={entitiesMenuOpen} onClick={() => setEntitiesMenuOpen(open => !open)}>{brandContent()}<span className="brand-menu-arrow" aria-hidden="true" /></button>
+        <nav className="entity-drawer" aria-label="Navegação principal" aria-hidden={!entitiesMenuOpen}>
           <div className="entity-drawer-head">
-            <div><small>LTFT Comand Center</small><strong>Entidades</strong></div>
-            <button type="button" className="entity-drawer-close" aria-label="Fechar menu de Entidades" onClick={() => closeEntitiesMenu()}>×</button>
+            <div><small>LTFT Comand Center</small><strong>Menu principal</strong></div>
+            <button type="button" className="entity-drawer-close" aria-label="Fechar menu de navegação" onClick={() => closeEntitiesMenu()}>×</button>
           </div>
           <div className="entity-drawer-links">
-            <button onClick={() => goToEntity('/clientes')}>Clientes</button>
-            <button onClick={() => goToEntity('/entidades/destinatarios')}>Destinatários</button>
-            <button onClick={() => goToEntity('/entidades/pontos-pickup')}>Pontos Pickup</button>
-            <button onClick={() => goToEntity('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
-            {auth.roles.includes('ADMIN') && <button onClick={() => goToEntity('/entidades/colaboradores')}>Colaboradores</button>}
+            <button type="button" className={`drawer-section-toggle${entitiesExpanded ? ' is-expanded' : ''}`} aria-expanded={entitiesExpanded} aria-controls="entities-submenu" onClick={() => setEntitiesExpanded(expanded => !expanded)}><span>Entidades</span><span className="drawer-section-arrow" aria-hidden="true" /></button>
+            <div id="entities-submenu" className="drawer-submenu" hidden={!entitiesExpanded}>
+              <button className={isCurrentPage('/clientes') ? 'is-active' : ''} aria-current={isCurrentPage('/clientes') ? 'page' : undefined} onClick={() => goToPage('/clientes')}>Clientes</button>
+              <button className={isCurrentPage('/entidades/destinatarios') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/destinatarios') ? 'page' : undefined} onClick={() => goToPage('/entidades/destinatarios')}>Destinatários</button>
+              <button className={isCurrentPage('/entidades/pontos-pickup') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/pontos-pickup') ? 'page' : undefined} onClick={() => goToPage('/entidades/pontos-pickup')}>Pontos Pickup</button>
+              <button className={isCurrentPage('/entidades/fornecedores') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/fornecedores') ? 'page' : undefined} onClick={() => goToPage('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
+              {auth.roles.includes('ADMIN') && <button className={isCurrentPage('/entidades/colaboradores') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/colaboradores') ? 'page' : undefined} onClick={() => goToPage('/entidades/colaboradores')}>Colaboradores</button>}
+            </div>
+            {auth.roles.includes('ADMIN') && <><p className="drawer-category-label">Administração</p><button className={`drawer-page-link${isCurrentPage('/admin/utilizadores') ? ' is-active' : ''}`} aria-current={isCurrentPage('/admin/utilizadores') ? 'page' : undefined} onClick={() => goToPage('/admin/utilizadores')}>Utilizadores</button></>}
           </div>
         </nav>
       </div> : <button className="brand-button" onClick={() => navigate('/clientes')}>{brandContent()}</button>}
@@ -252,7 +261,7 @@ function App({ auth }: { auth: AuthSession }) {
   const isCollaborators = path === '/entidades/colaboradores'
   const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaborators
   const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPrototypePage /> : null
-  return <div className="app-shell"><Header auth={auth} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaborators && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
+  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaborators && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value) }
