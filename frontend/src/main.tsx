@@ -26,11 +26,24 @@ function navigate(path: string) {
 function Header({ auth }: { auth: AuthSession }) {
   const canViewEntities = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
   const entitiesMenuRef = useRef<HTMLDivElement>(null)
+  const entitiesMenuCloseTimer = useRef<number | undefined>(undefined)
   const [entitiesMenuOpen, setEntitiesMenuOpen] = useState(false)
+
+  useEffect(() => () => window.clearTimeout(entitiesMenuCloseTimer.current), [])
+
+  function openEntitiesMenu() {
+    window.clearTimeout(entitiesMenuCloseTimer.current)
+    setEntitiesMenuOpen(true)
+  }
+
+  function closeEntitiesMenu(delay = 0) {
+    window.clearTimeout(entitiesMenuCloseTimer.current)
+    entitiesMenuCloseTimer.current = window.setTimeout(() => setEntitiesMenuOpen(false), delay)
+  }
 
   function goToEntity(path: string) {
     const menu = entitiesMenuRef.current
-    setEntitiesMenuOpen(false)
+    closeEntitiesMenu()
     menu?.querySelector<HTMLElement>('.brand-trigger')?.focus()
     navigate(path)
   }
@@ -41,19 +54,25 @@ function Header({ auth }: { auth: AuthSession }) {
 
   return <header>
     <div className="header-left">
-      {canViewEntities ? <div ref={entitiesMenuRef} className={`brand-entities-menu${entitiesMenuOpen ? ' is-open' : ''}`} onMouseEnter={() => setEntitiesMenuOpen(true)} onMouseLeave={() => setEntitiesMenuOpen(false)} onKeyDown={event => {
+      {canViewEntities ? <div ref={entitiesMenuRef} className={`brand-entities-menu${entitiesMenuOpen ? ' is-open' : ''}`} onMouseEnter={openEntitiesMenu} onMouseLeave={() => closeEntitiesMenu(180)} onKeyDown={event => {
         if (event.key === 'Escape') {
-          setEntitiesMenuOpen(false)
+          closeEntitiesMenu()
           entitiesMenuRef.current?.querySelector<HTMLElement>('.brand-trigger')?.focus()
         }
       }}>
         <button type="button" className="brand-trigger" aria-label="Abrir menu de Entidades" aria-haspopup="menu" aria-expanded={entitiesMenuOpen} onClick={() => setEntitiesMenuOpen(open => !open)}>{brandContent()}<span className="brand-menu-arrow" aria-hidden="true" /></button>
-        <nav aria-label="Páginas de Entidades">
-          <button onClick={() => goToEntity('/clientes')}>Clientes</button>
-          <button onClick={() => goToEntity('/entidades/destinatarios')}>Destinatários</button>
-          <button onClick={() => goToEntity('/entidades/pontos-pickup')}>Pontos Pickup</button>
-          <button onClick={() => goToEntity('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
-          {auth.roles.includes('ADMIN') && <button onClick={() => goToEntity('/entidades/colaboradores')}>Colaboradores</button>}
+        <nav className="entity-drawer" aria-label="Páginas de Entidades" aria-hidden={!entitiesMenuOpen}>
+          <div className="entity-drawer-head">
+            <div><small>LTFT Comand Center</small><strong>Entidades</strong></div>
+            <button type="button" className="entity-drawer-close" aria-label="Fechar menu de Entidades" onClick={() => closeEntitiesMenu()}>×</button>
+          </div>
+          <div className="entity-drawer-links">
+            <button onClick={() => goToEntity('/clientes')}>Clientes</button>
+            <button onClick={() => goToEntity('/entidades/destinatarios')}>Destinatários</button>
+            <button onClick={() => goToEntity('/entidades/pontos-pickup')}>Pontos Pickup</button>
+            <button onClick={() => goToEntity('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
+            {auth.roles.includes('ADMIN') && <button onClick={() => goToEntity('/entidades/colaboradores')}>Colaboradores</button>}
+          </div>
         </nav>
       </div> : <button className="brand-button" onClick={() => navigate('/clientes')}>{brandContent()}</button>}
     </div>
