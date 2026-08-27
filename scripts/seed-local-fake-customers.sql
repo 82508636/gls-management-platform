@@ -2,6 +2,11 @@ BEGIN;
 
 LOCK TABLE customer_code_counters IN ROW EXCLUSIVE MODE;
 
+DELETE FROM shipments
+WHERE customer_id IN (
+    SELECT id FROM customers WHERE billing_reference LIKE 'FAKE-SEED-%'
+);
+
 DELETE FROM customers
 WHERE billing_reference LIKE 'FAKE-SEED-%';
 
@@ -49,7 +54,7 @@ BEGIN
     INSERT INTO customers (
         id, customer_code, abbreviation, shipping_name, agency,
         address, postal_code, locality, country, contact_email, mobile, phone,
-        billing_country, vat_number, billing_legal_name, billing_address,
+        billing_country, vat_number, vat_key, billing_legal_name, billing_address,
         billing_postal_code, billing_locality, account_code, billing_reference,
         customer_type, responsible_name, billing_email, default_document,
         exchange_rate, currency, invoice_by_post, documents_by_email, active,
@@ -73,6 +78,7 @@ BEGIN
         '25' || LPAD((3000000 + number)::TEXT, 7, '0'),
         'PT',
         fake_customers.vat_number,
+        'PT:' || fake_customers.vat_number,
         'Cliente Teste ' || LPAD(number::TEXT, 3, '0') || ', Lda.',
         'Rua de Faturação ' || number || ', ' || (10 + number % 80),
         CASE fake_customers.agency WHEN 'LTFT01' THEN '4820-' ELSE '4805-' END || LPAD((number % 999)::TEXT, 3, '0'),

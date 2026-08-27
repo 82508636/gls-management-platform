@@ -41,6 +41,14 @@ Get-Content -LiteralPath .\scripts\seed-local-fake-customers.sql -Raw |
 
 O seed cria 100 clientes por agência, com códigos sequenciais, NIFs numéricos com checksum português válido e uma combinação de estados ativos/inativos. Reexecuções substituem exclusivamente os registos identificados por `FAKE-SEED-*`; clientes reais são preservados. Este script é apenas para ambientes locais e não faz parte das migrations Flyway de produção.
 
+Para criar novamente os 200 clientes e acrescentar envios locais reproduzíveis para vários destinos nacionais e espanhóis, execute:
+
+```powershell
+.\scripts\seed-local-demo-shipments.ps1
+```
+
+O script cria seis envios Business Parcel/Express Parcel, em seis clientes e destinatários distintos, com uma combinação de serviços pagos e por pagar. Reexecuções substituem apenas os clientes e envios marcados como dados locais.
+
 ### Gestão JML
 
 Administradores acedem a `/admin/utilizadores` através da opção `Gerir utilizadores` no menu do cabeçalho. A página permite criar utilizadores com password temporária, substituir o perfil da plataforma e desativar contas com revogação de sessões.
@@ -59,13 +67,15 @@ O resultado é informativo: `não confirmado no VIES` não significa que o NIF o
 
 As decisões, contrato e limitações estão documentados em [`docs/vies-integration.md`](docs/vies-integration.md).
 
-A conta do cliente está disponível em `/clientes/{id}/conta`. Nesta fase, os serviços e respetivos estados de pagamento são dados de demonstração isolados no frontend para validar navegação e filtros por estado e data.
-
-O frontend já contém a apresentação da conta e a geração de PDF, mas não injeta serviços mock. Enquanto não existir uma fonte real de serviços, a conta aparece vazia e o botão `Gerar resumo PDF` permanece desativado. O PDF não aplica IVA nem regras fiscais ainda não especificadas.
+A conta do cliente está disponível em `/clientes/{id}/conta`. Os serviços são lidos dos envios persistidos através de `GET /api/customers/{id}/services`; os filtros por estado e data e a geração do resumo PDF usam esses dados reais da base local.
 
 ### Tabelas de preços
 
-O primeiro módulo de configuração comercial cobre Business Parcel e Express Parcel. Administradores podem rever e editar a tabela inicial enquanto está em rascunho; administradores e contabilidade podem consultar preços e simular o custo de um envio em `/configuracao/tabelas-precos`. O cálculo considera peso real e volumétrico, escalões, quilograma adicional, combustível e IVA. Não existe ainda ligação à GLS nem geração automática de envios ou faturas.
+O primeiro módulo de configuração comercial cobre Business Parcel e Express Parcel. Administradores podem rever e editar a tabela inicial enquanto está em rascunho; administradores e contabilidade podem consultar preços e simular o custo de um envio em `/configuracao/tabelas-precos`. O cálculo considera peso real e volumétrico, escalões, quilograma adicional, combustível e IVA. Os envios locais reutilizam este cálculo, mas não existe ainda ligação à GLS nem geração de faturas.
+
+### Envios locais
+
+`POST /api/shipments` cria um envio transacional: valida o cliente, calcula o preço, confirma que o país do destinatário corresponde à rota e cria ou reutiliza o destinatário antes de persistir o envio. ADMIN, OPERATOR e FRONT_DESK podem criar; ADMIN, OPERATOR, ACCOUNTING e FRONT_DESK podem consultar `GET /api/shipments`. Cada registo conserva fotografias dos dados comerciais usados no momento da criação, estados logístico e de pagamento e auditoria do utilizador responsável.
 
 O modelo, as regras e os endpoints estão documentados em [`docs/PRICING.md`](docs/PRICING.md).
 

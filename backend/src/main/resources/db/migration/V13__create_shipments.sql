@@ -1,0 +1,57 @@
+CREATE SEQUENCE shipment_number_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE shipments (
+    id UUID PRIMARY KEY,
+    shipment_number VARCHAR(40) NOT NULL UNIQUE,
+    external_reference VARCHAR(80) NOT NULL UNIQUE,
+    customer_id UUID NOT NULL REFERENCES customers(id),
+    customer_code VARCHAR(6) NOT NULL,
+    customer_name VARCHAR(200) NOT NULL,
+    recipient_id UUID NOT NULL REFERENCES recipients(id),
+    recipient_code VARCHAR(30),
+    recipient_designation VARCHAR(200) NOT NULL,
+    recipient_address VARCHAR(500) NOT NULL,
+    recipient_postal_code VARCHAR(20) NOT NULL,
+    recipient_locality VARCHAR(120) NOT NULL,
+    recipient_country VARCHAR(2) NOT NULL,
+    pricing_plan_id UUID NOT NULL REFERENCES pricing_plans(id),
+    pricing_plan_code VARCHAR(40) NOT NULL,
+    pricing_plan_version INTEGER NOT NULL,
+    pricing_route_id UUID NOT NULL REFERENCES pricing_routes(id),
+    route_code VARCHAR(60) NOT NULL,
+    route_designation VARCHAR(160) NOT NULL,
+    service_code VARCHAR(30) NOT NULL,
+    shipment_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    parcel_count INTEGER NOT NULL,
+    actual_weight_kg NUMERIC(10, 3) NOT NULL,
+    volumetric_weight_kg NUMERIC(10, 3) NOT NULL,
+    chargeable_weight_kg NUMERIC(10, 3) NOT NULL,
+    length_cm NUMERIC(10, 2),
+    width_cm NUMERIC(10, 2),
+    height_cm NUMERIC(10, 2),
+    base_price NUMERIC(12, 2) NOT NULL,
+    fuel_surcharge NUMERIC(12, 2) NOT NULL,
+    subtotal NUMERIC(12, 2) NOT NULL,
+    vat NUMERIC(12, 2) NOT NULL,
+    total NUMERIC(12, 2) NOT NULL,
+    currency CHAR(3) NOT NULL,
+    shipment_status VARCHAR(20) NOT NULL,
+    payment_status VARCHAR(20) NOT NULL,
+    paid_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_by VARCHAR(120) NOT NULL,
+    CONSTRAINT shipments_dates_valid CHECK (due_date >= shipment_date),
+    CONSTRAINT shipments_parcels_positive CHECK (parcel_count > 0),
+    CONSTRAINT shipments_weights_positive CHECK (actual_weight_kg > 0 AND volumetric_weight_kg >= 0 AND chargeable_weight_kg > 0),
+    CONSTRAINT shipments_amounts_non_negative CHECK (base_price >= 0 AND fuel_surcharge >= 0 AND subtotal >= 0 AND vat >= 0 AND total >= 0),
+    CONSTRAINT shipments_service_code CHECK (service_code IN ('BUSINESS_PARCEL', 'EXPRESS_PARCEL')),
+    CONSTRAINT shipments_status CHECK (shipment_status IN ('CREATED', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED')),
+    CONSTRAINT shipments_payment_status CHECK (payment_status IN ('PENDING', 'PAID')),
+    CONSTRAINT shipments_paid_state CHECK ((payment_status = 'PAID' AND paid_at IS NOT NULL) OR (payment_status = 'PENDING' AND paid_at IS NULL))
+);
+
+CREATE INDEX shipments_customer_date_idx ON shipments(customer_id, shipment_date DESC);
+CREATE INDEX shipments_recipient_idx ON shipments(recipient_id);
+CREATE INDEX shipments_status_idx ON shipments(shipment_status, payment_status);
+

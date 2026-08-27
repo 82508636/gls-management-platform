@@ -93,11 +93,31 @@ function Header({ auth, path }: { auth: AuthSession; path: string }) {
   </header>
 }
 
-function AccountPage({ customer, onBack }: { customer: Customer; onBack: () => void }) {
+function AccountPage({ customer, auth, onBack }: { customer: Customer; auth: AuthSession; onBack: () => void }) {
   const [status, setStatus] = useState<ServiceStatus>('PENDING')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
-  const services: CustomerService[] = []
+  const [services, setServices] = useState<CustomerService[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    const controller = new AbortController()
+    setLoading(true)
+    setError('')
+    void auth.fetch(`${apiUrl}/customers/${customer.id}/services`, { signal: controller.signal })
+      .then(response => {
+        if (!response.ok) throw new Error('load failed')
+        return response.json() as Promise<CustomerService[]>
+      })
+      .then(result => setServices(result))
+      .catch(exception => {
+        if (exception instanceof DOMException && exception.name === 'AbortError') return
+        setServices([])
+        setError(GENERIC_LOAD_ERROR)
+      })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [customer.id, auth])
   const filtered = useMemo(() => services.filter(service =>
     (status === 'ALL' || service.status === status) &&
     (!dateFrom || service.serviceDate >= dateFrom) &&
@@ -119,8 +139,9 @@ function AccountPage({ customer, onBack }: { customer: Customer; onBack: () => v
         <label>Data final<input type="date" value={dateTo} onInput={event => setDateTo(event.currentTarget.value)} /></label>
         <button className="secondary clear-filter" onClick={() => { setStatus('PENDING'); setDateFrom(''); setDateTo('') }}>Limpar filtros</button>
       </div>
-      <p className="results-count">{filtered.length} {filtered.length === 1 ? 'serviço encontrado' : 'serviços encontrados'}</p>
-      {filtered.length === 0 ? <p className="empty">Não existem serviços para os filtros selecionados.</p> : <div className="table-wrap"><table><thead><tr><th>Serviço</th><th>Data</th><th>Vencimento</th><th>Valor</th><th>Estado</th></tr></thead><tbody>
+      {error && <p className="form-error" role="alert">{error}</p>}
+      <p className="results-count">{loading ? 'A carregar serviços…' : `${filtered.length} ${filtered.length === 1 ? 'serviço encontrado' : 'serviços encontrados'}`}</p>
+      {!loading && filtered.length === 0 ? <p className="empty">Não existem serviços para os filtros selecionados.</p> : !loading && <div className="table-wrap"><table><thead><tr><th>Serviço</th><th>Data</th><th>Vencimento</th><th>Valor</th><th>Estado</th></tr></thead><tbody>
         {filtered.map(service => <ServiceRow key={service.id} service={service} />)}
       </tbody></table></div>}
     </section>
@@ -294,7 +315,7 @@ function App({ auth }: { auth: AuthSession }) {
   const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaboratorArea
   const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isAccountProfiles && auth.roles.includes('ADMIN') ? <ReferenceManagementPage auth={auth} endpoint="account-profiles" title="Gerir perfis de conta" trail={['Administração','Perfis de conta']} description="Catálogo de perfis disponível no registo de colaboradores. As permissões efetivas continuam a ser geridas no Keycloak." createTitle="Novo perfil" editTitle="Editar perfil" idHint="Ex.: DRIVER" items={accountProfiles} onChange={setAccountProfiles} onBack={() => navigate('/entidades/colaboradores/create')}/> : isProfessionalCategories && auth.roles.includes('ADMIN') ? <ReferenceManagementPage auth={auth} endpoint="professional-categories" title="Gerir categorias profissionais" trail={['Entidades','Colaboradores','Categorias profissionais']} description="Mantém as categorias profissionais sem eliminar o respetivo histórico de auditoria." createTitle="Nova categoria profissional" editTitle="Editar categoria profissional" idHint="Ex.: 7" items={professionalCategories} onChange={setProfessionalCategories} onBack={() => navigate('/entidades/colaboradores/create')}/> : isCollaboratorCreate && auth.roles.includes('ADMIN') ? <CollaboratorCreatePage accountProfiles={accountProfiles} professionalCategories={professionalCategories} onManageProfiles={() => navigate('/admin/perfis')} onManageCategories={() => navigate('/entidades/colaboradores/categorias-profissionais')}/> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage onCreate={() => navigate('/entidades/colaboradores/create')} /> : null
   const canViewPricing = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
-  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isPricingPlans && canViewPricing ? <PricingPlansPage auth={auth}/> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) || (isPricingPlans && !canViewPricing) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
+  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isPricingPlans && canViewPricing ? <PricingPlansPage auth={auth}/> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) || (isPricingPlans && !canViewPricing) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} auth={auth} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value) }

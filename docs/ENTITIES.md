@@ -3,8 +3,7 @@
 ## Destinatários
 
 Os destinatários não têm criação manual. O serviço interno
-`RecipientRegistrationService.registerFromShipment(...)` deve ser chamado pela futura transação de
-criação de uma recolha ou envio.
+`RecipientRegistrationService.registerFromShipment(...)` é chamado pela transação de criação de um envio.
 
 O registo é idempotente: nome, morada, código postal, localidade e país são normalizados e usados para
 calcular uma chave SHA-256. Um destinatário já conhecido é atualizado e recebe uma nova data de última
@@ -16,6 +15,21 @@ Endpoint disponível nesta fase:
 
 Não existe `POST /api/recipients`; essa operação está deliberadamente reservada ao fluxo interno de
 recolhas/envios.
+
+## Envios
+
+Os envios são persistidos localmente sem chamar a API GLS. A criação associa um cliente e um destinatário,
+usa uma rota Business Parcel ou Express Parcel da tabela de preços e conserva o preço, datas, pesos,
+estado logístico, estado de pagamento e auditoria.
+
+Endpoints:
+
+- `GET /api/shipments?page=0&size=50` — ADMIN, OPERATOR, ACCOUNTING e FRONT_DESK;
+- `POST /api/shipments` — ADMIN, OPERATOR e FRONT_DESK;
+- `GET /api/customers/{id}/services` — alimenta a conta do cliente.
+
+A operação de criação é transacional e cria ou reutiliza automaticamente o destinatário. O país do
+destinatário tem de corresponder ao país configurado na rota selecionada.
 
 ## Pontos Pickup
 

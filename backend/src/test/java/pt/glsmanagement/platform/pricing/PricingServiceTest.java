@@ -48,6 +48,16 @@ class PricingServiceTest {
     }
 
     @Test
+    void exposesAStableQuoteForShipmentPersistence() {
+        var result = service.quote(new PricingQuoteRequest(plan.id(), "bus_pt_24h", new BigDecimal("4"), 1,
+                null, null, null));
+
+        assertThat(result.routeId()).isEqualTo(route.id());
+        assertThat(result.serviceCode()).isEqualTo("BUSINESS_PARCEL");
+        assertThat(result.total()).isEqualByComparingTo("6.00");
+    }
+
+    @Test
     void appliesVolumetricWeightAndAdditionalKilogramSteps() {
         var result = service.simulate(new SimulationRequest(plan.id(), "BUS_PT_24H", new BigDecimal("10"), 1,
                 new BigDecimal("100"), new BigDecimal("50"), new BigDecimal("40")));

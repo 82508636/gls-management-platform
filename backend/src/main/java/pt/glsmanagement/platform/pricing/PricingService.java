@@ -8,7 +8,7 @@ import java.util.*;
 import static pt.glsmanagement.platform.pricing.PricingDtos.*;
 
 @Service
-class PricingService {
+class PricingService implements PricingQuoteService {
     private static final BigDecimal HUNDRED = new BigDecimal("100");
     private static final BigDecimal CUBIC_CENTIMETRES_PER_CUBIC_METRE = new BigDecimal("1000000");
     private final PricingPlanRepository plans;
@@ -118,6 +118,21 @@ class PricingService {
         return new SimulationResponse(plan.id(), plan.code(), plan.version(), route.code(), route.designation(),
                 request.actualWeightKg(), volumetric, chargeable, selected.upToWeightKg(), extraSteps,
                 basePrice, fuel, subtotal, vat, total, plan.currency());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PricingQuote quote(PricingQuoteRequest request) {
+        var simulation = simulate(new SimulationRequest(request.planId(), request.routeCode(),
+                request.actualWeightKg(), request.parcelCount(), request.lengthCm(), request.widthCm(),
+                request.heightCm()));
+        var route = routes.findByPlanIdAndCodeIgnoreCase(request.planId(), normalizeCode(request.routeCode()))
+                .orElseThrow(PricingException::notFound);
+        return new PricingQuote(simulation.planId(), simulation.planCode(), simulation.planVersion(), route.id(),
+                simulation.routeCode(), simulation.routeDesignation(), route.destinationCountry(), route.serviceCode().name(),
+                simulation.actualWeightKg(), simulation.volumetricWeightKg(), simulation.chargeableWeightKg(),
+                simulation.basePrice(), simulation.fuelSurcharge(), simulation.subtotal(), simulation.vat(),
+                simulation.total(), simulation.currency());
     }
 
     private PricingPlan findPlan(UUID id) { return plans.findById(id).orElseThrow(PricingException::notFound); }
