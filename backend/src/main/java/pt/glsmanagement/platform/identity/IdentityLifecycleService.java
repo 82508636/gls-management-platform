@@ -9,10 +9,13 @@ import java.util.List;
 class IdentityLifecycleService {
     private final KeycloakAdminClient keycloak;
     private final IdentityAuditRepository audit;
+    private final IdentityAccessControl accessControl;
 
-    IdentityLifecycleService(KeycloakAdminClient keycloak, IdentityAuditRepository audit) {
+    IdentityLifecycleService(KeycloakAdminClient keycloak, IdentityAuditRepository audit,
+                             IdentityAccessControl accessControl) {
         this.keycloak = keycloak;
         this.audit = audit;
+        this.accessControl = accessControl;
     }
 
     List<IdentityUserResponse> list() { return keycloak.listUsers(); }
@@ -20,6 +23,7 @@ class IdentityLifecycleService {
     @Transactional
     IdentityUserResponse join(JoinerRequest request, Jwt actor) {
         var user = keycloak.create(request);
+        accessControl.activate(user.id(), request.role());
         record(actor, "JOINER", user, "", roles(user), "Utilizador criado e ativado");
         return user;
     }
@@ -28,6 +32,7 @@ class IdentityLifecycleService {
     IdentityUserResponse move(String id, MoverRequest request, Jwt actor) {
         var before = keycloak.get(id);
         var user = keycloak.move(id, request.role());
+        accessControl.activate(user.id(), request.role());
         record(actor, "MOVER", user, roles(before), roles(user), "Perfis da plataforma substituídos");
         return user;
     }
@@ -36,6 +41,7 @@ class IdentityLifecycleService {
     IdentityUserResponse leave(String id, Jwt actor) {
         var before = keycloak.get(id);
         var user = keycloak.leave(id);
+        accessControl.disable(user.id());
         record(actor, "LEAVER", user, roles(before), roles(user), "Utilizador desativado e sessões terminadas");
         return user;
     }

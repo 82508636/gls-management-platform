@@ -11,7 +11,7 @@ type IdentityUser = {
   roles: Role[]
 }
 
-const roles: Role[] = ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER']
+const roles: Role[] = ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER', 'DRIVER', 'FRONT_DESK']
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 const emptyJoiner = { username: '', email: '', firstName: '', lastName: '', role: 'OPERATOR' as Role, temporaryPassword: '' }
 

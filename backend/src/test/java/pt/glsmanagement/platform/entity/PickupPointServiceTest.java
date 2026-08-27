@@ -53,8 +53,25 @@ class PickupPointServiceTest {
         verify(repository).findAll(pageable);
     }
 
+    @Test
+    void rejectsOverlappingMorningAndAfternoonSchedules() {
+        assertThatThrownBy(() -> new PickupPointRequest("LTFT-PU-002", "Ponto", LocalTime.of(9, 0),
+                LocalTime.of(14, 30), LocalTime.of(14, 0), LocalTime.of(18, 0), "Rua", "4820-001", "Fafe",
+                "PT", null, null, null, false, false, true))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void acceptsAdjacentMorningAndAfternoonSchedules() {
+        var request = new PickupPointRequest("LTFT-PU-003", "Ponto", LocalTime.of(9, 0), LocalTime.of(13, 0),
+                LocalTime.of(13, 0), LocalTime.of(18, 0), "Rua", "4820-001", "Fafe", "PT", null, null, null,
+                false, false, true);
+
+        assertThat(request.afternoonOpen()).isEqualTo(request.morningClose());
+    }
+
     private static PickupPointRequest request(String code) {
-        return new PickupPointRequest(code, "Ponto Fafe", "GLS", LocalTime.of(9, 0), LocalTime.of(12, 30),
+        return new PickupPointRequest(code, "Ponto Fafe", LocalTime.of(9, 0), LocalTime.of(12, 30),
                 LocalTime.of(14, 0), LocalTime.of(18, 0), "Rua Central 1", "4820-001", "Fafe", "PT",
                 "pickup@example.test", "253000000", "910000000", true, false, true);
     }

@@ -1,5 +1,8 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { ContextualPageHeading } from './ContextualPageHeading'
+import type { AuthSession } from './auth'
+
+const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 
 export type AuditedReference = {
   id: string
@@ -11,34 +14,12 @@ export type AuditedReference = {
   updatedBy: string
 }
 
-const initialAuditDate = '2026-08-25T00:00:00.000Z'
-
-function reference(id: string, designation: string): AuditedReference {
-  return { id, designation, active: true, createdAt: initialAuditDate, createdBy: 'Sistema', updatedAt: initialAuditDate, updatedBy: 'Sistema' }
-}
-
-export const initialAccountProfiles: AuditedReference[] = [
-  reference('ADMIN', 'Administrador'),
-  reference('OPERATOR', 'Operador'),
-  reference('ACCOUNTING', 'Contabilidade'),
-  reference('DRIVER', 'Motorista'),
-  reference('FRONT_DESK', 'Atendedor de Balcão'),
-]
-
-export const initialProfessionalCategories: AuditedReference[] = [
-  reference('1', 'Administrativo'),
-  reference('2', 'Motoristas Ligeiros'),
-  reference('3', 'Motoristas Pesados'),
-  reference('4', 'Operadores de Armazém'),
-  reference('5', 'Oficina'),
-  reference('6', 'Outros'),
-]
-
 type ReferenceManagementPageProps = {
-  actor: string
+  auth: AuthSession
   createTitle: string
   description: string
   editTitle: string
+  endpoint: 'account-profiles' | 'professional-categories'
   idHint: string
   items: AuditedReference[]
   onBack: () => void
@@ -47,7 +28,7 @@ type ReferenceManagementPageProps = {
   trail: string[]
 }
 
-export function ReferenceManagementPage({ actor, createTitle, description, editTitle, idHint, items, onBack, onChange, title, trail }: ReferenceManagementPageProps) {
+export function ReferenceManagementPage({ auth, createTitle, description, editTitle, endpoint, idHint, items, onBack, onChange, title, trail }: ReferenceManagementPageProps) {
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formOpen, setFormOpen] = useState(false)
@@ -83,7 +64,7 @@ export function ReferenceManagementPage({ actor, createTitle, description, editT
     setFormOpen(true)
   }
 
-  function save(event: FormEvent) {
+  async function save(event: FormEvent) {
     event.preventDefault()
     const normalizedId = id.trim().toUpperCase()
     const normalizedDesignation = designation.trim()
@@ -95,18 +76,32 @@ export function ReferenceManagementPage({ actor, createTitle, description, editT
       setError('Já existe um registo com este ID.')
       return
     }
-    const now = new Date().toISOString()
-    if (editingId) {
-      onChange(items.map(item => item.id === editingId ? { ...item, designation: normalizedDesignation, updatedAt: now, updatedBy: actor } : item))
-    } else {
-      onChange([...items, { id: normalizedId, designation: normalizedDesignation, active: true, createdAt: now, createdBy: actor, updatedAt: now, updatedBy: actor }])
+    try {
+      const response = await auth.fetch(`${apiUrl}/reference-data/${endpoint}${editingId ? `/${encodeURIComponent(editingId)}` : ''}`, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingId ? { designation: normalizedDesignation } : { id: normalizedId, designation: normalizedDesignation }),
+      })
+      if (!response.ok) throw new Error('save failed')
+      const saved = await response.json() as AuditedReference
+      const next = editingId ? items.map(item => item.id === editingId ? saved : item) : [...items, saved]
+      onChange(next.sort((left, right) => left.designation.localeCompare(right.designation, 'pt-PT')))
+      closeForm()
+    } catch {
+      setError('Não foi possível guardar. Confirme se o ID ou a designação já existem.')
     }
-    closeForm()
   }
 
-  function toggle(item: AuditedReference) {
-    const now = new Date().toISOString()
-    onChange(items.map(current => current.id === item.id ? { ...current, active: !current.active, updatedAt: now, updatedBy: actor } : current))
+  async function toggle(item: AuditedReference) {
+    setError('')
+    try {
+      const response = await auth.fetch(`${apiUrl}/reference-data/${endpoint}/${encodeURIComponent(item.id)}/status`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !item.active }),
+      })
+      if (!response.ok) throw new Error('status failed')
+      const saved = await response.json() as AuditedReference
+      onChange(items.map(current => current.id === item.id ? saved : current))
+    } catch { setError('Não foi possível alterar o estado do registo.') }
   }
 
   return <main className="workspace-page entities-page reference-management-page">
@@ -117,11 +112,12 @@ export function ReferenceManagementPage({ actor, createTitle, description, editT
         <span className="results-summary">{visibleItems.length} de {items.length} registos</span>
       </div>
       <p className="reference-description">{description}</p>
+      {error && !formOpen && <p className="error">{error}</p>}
       <div className="table-wrap reference-table"><table><thead><tr><th>ID</th><th>Designação</th><th>Estado</th><th>Criado</th><th>Última alteração</th><th>Ações</th></tr></thead><tbody>
-        {visibleItems.map(item => <tr key={item.id}><td><strong className="customer-code">{item.id}</strong></td><td><strong>{item.designation}</strong></td><td><span className={item.active ? 'badge active' : 'badge'}>{item.active ? 'Ativo' : 'Inativo'}</span></td><td>{formatAuditDate(item.createdAt)}<small>{item.createdBy}</small></td><td>{formatAuditDate(item.updatedAt)}<small>{item.updatedBy}</small></td><td><div className="row-actions"><button className="secondary" onClick={() => edit(item)}>Editar</button><button className={item.active ? 'danger-link' : 'secondary'} onClick={() => toggle(item)}>{item.active ? 'Inativar' : 'Ativar'}</button></div></td></tr>)}
+        {visibleItems.map(item => <tr key={item.id}><td><strong className="customer-code">{item.id}</strong></td><td><strong>{item.designation}</strong></td><td><span className={item.active ? 'badge active' : 'badge'}>{item.active ? 'Ativo' : 'Inativo'}</span></td><td>{formatAuditDate(item.createdAt)}<small>{item.createdBy}</small></td><td>{formatAuditDate(item.updatedAt)}<small>{item.updatedBy}</small></td><td><div className="row-actions"><button className="secondary" onClick={() => edit(item)}>Editar</button><button className={item.active ? 'danger-link' : 'secondary'} onClick={() => void toggle(item)}>{item.active ? 'Inativar' : 'Ativar'}</button></div></td></tr>)}
       </tbody></table></div>
     </section>
-    {formOpen && <div className="overlay" onMouseDown={event => { if (event.target === event.currentTarget) closeForm() }}><aside className="partial reference-partial" role="dialog" aria-modal="true" aria-labelledby="reference-form-title"><div className="partial-head"><div><h2 id="reference-form-title">{editingId ? editTitle : createTitle}</h2><p>Os campos assinalados com * são obrigatórios.</p></div><button className="close" onClick={closeForm} aria-label="Fechar">×</button></div><form className="reference-form" onSubmit={save}><label>ID *<input required disabled={Boolean(editingId)} value={id} onChange={event => setId(event.target.value)} placeholder={idHint}/><small>O ID é imutável depois da criação.</small></label><label>Designação *<input required maxLength={120} value={designation} onChange={event => setDesignation(event.target.value)}/></label>{error && <p className="error">{error}</p>}<div className="actions"><button type="button" className="secondary" onClick={closeForm}>Cancelar</button><button type="submit">Guardar</button></div></form></aside></div>}
+    {formOpen && <div className="overlay" onMouseDown={event => { if (event.target === event.currentTarget) closeForm() }}><aside className="partial reference-partial" role="dialog" aria-modal="true" aria-labelledby="reference-form-title"><div className="partial-head"><div><h2 id="reference-form-title">{editingId ? editTitle : createTitle}</h2><p>Os campos assinalados com * são obrigatórios.</p></div><button className="close" onClick={closeForm} aria-label="Fechar">×</button></div><form className="reference-form" onSubmit={event => void save(event)}><label>ID *<input required disabled={Boolean(editingId)} value={id} onChange={event => setId(event.target.value)} placeholder={idHint}/><small>O ID é imutável depois da criação.</small></label><label>Designação *<input required maxLength={120} value={designation} onChange={event => setDesignation(event.target.value)}/></label>{error && <p className="error">{error}</p>}<div className="actions"><button type="button" className="secondary" onClick={closeForm}>Cancelar</button><button type="submit">Guardar</button></div></form></aside></div>}
   </main>
 }
 

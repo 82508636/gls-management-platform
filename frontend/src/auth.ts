@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'OPERATOR' | 'ACCOUNTING' | 'CUSTOMER'
+export type Role = 'ADMIN' | 'OPERATOR' | 'ACCOUNTING' | 'CUSTOMER' | 'DRIVER' | 'FRONT_DESK'
 
 type TokenClaims = {
   exp?: number
@@ -60,7 +60,7 @@ export async function initializeAuth(): Promise<AuthSession> {
 
 function session(): AuthSession {
   const realmRoles = claims.realm_access?.roles ?? []
-  const roles = realmRoles.filter((role): role is Role => ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER'].includes(role))
+  const roles = realmRoles.filter((role): role is Role => ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER', 'DRIVER', 'FRONT_DESK'].includes(role))
   return {
     authenticated: Boolean(accessToken),
     displayName: claims.name ?? claims.preferred_username ?? '',

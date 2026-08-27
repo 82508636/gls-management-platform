@@ -26,7 +26,7 @@ if (!adminUsername || !adminPassword) {
 
 const runId = `${Date.now()}-${randomBytes(3).toString('hex')}`
 const password = `E2E-${randomBytes(18).toString('base64url')}!aA1`
-const roles = ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER']
+const roles = ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER', 'DRIVER', 'FRONT_DESK']
 const createdUsers = []
 
 async function request(url, options = {}) {
@@ -108,14 +108,14 @@ async function testRole(browser, role) {
   const page = await context.newPage()
   try {
     await login(page, role)
-    if (role === 'CUSTOMER') {
+    if (role === 'CUSTOMER' || role === 'DRIVER') {
       await page.getByRole('heading', { name: 'Acesso não autorizado' }).waitFor()
       return
     }
 
     await page.locator('main .customers-heading').filter({ hasText: 'Clientes' }).waitFor()
     const newCustomerCount = await page.getByRole('button', { name: '+ Novo', exact: true }).count()
-    assert(newCustomerCount === (role === 'ADMIN' || role === 'OPERATOR' ? 1 : 0), `${role}: permissão de criação de clientes incorreta.`)
+    assert(newCustomerCount === (role === 'ADMIN' || role === 'OPERATOR' || role === 'FRONT_DESK' ? 1 : 0), `${role}: permissão de criação de clientes incorreta.`)
 
     await page.locator('header details.user-menu summary').click()
     const manageUsersCount = await page.getByRole('button', { name: 'Gerir utilizadores' }).count()

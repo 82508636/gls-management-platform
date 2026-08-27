@@ -17,6 +17,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.util.Optional;
+import java.util.UUID;
 
 @ExtendWith(MockitoExtension.class)
 class CustomerServiceTest {
@@ -34,12 +36,12 @@ class CustomerServiceTest {
 
     @Test
     void rejectsDuplicateVatNumber() {
-        var request = request("Cliente", "LTFT01", "PT123");
-        when(repository.existsByVatNumber("PT123")).thenReturn(true);
+        var request = request("Cliente", "LTFT01", "PT 123");
+        when(repository.existsByVatKey("PT:123")).thenReturn(true);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(DuplicateCustomerVatNumberException.class)
-                .hasMessageContaining("PT123");
+                .hasMessageContaining("123");
         verify(recipientRegistrationService, never()).registerFromCustomer(any());
     }
 
@@ -77,12 +79,51 @@ class CustomerServiceTest {
     @Test
     void limitsCustomerPagesToFiftyItems() {
         Pageable expectedPage = PageRequest.of(0, 50, org.springframework.data.domain.Sort.by("shippingName").ascending());
-        when(repository.findAll(expectedPage)).thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
+        when(repository.search(null, null, expectedPage)).thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
 
-        var result = service.list(0, 200);
+        var result = service.list(0, 200, "  ", null);
 
         assertThat(result.content()).isEmpty();
-        verify(repository).findAll(expectedPage);
+        verify(repository).search(null, null, expectedPage);
+    }
+
+    @Test
+    void normalizesVatNumberBeforePersisting() {
+        var request = request("Cliente", "LTFT01", "pt 501.234.567");
+        when(codeGenerator.next("LTFT01")).thenReturn("100001");
+        when(repository.save(any(Customer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = service.create(request);
+
+        assertThat(result.vatNumber()).isEqualTo("501234567");
+        verify(repository).existsByVatKey("PT:501234567");
+    }
+
+    @Test
+    void updatesTheRecipientWhenCustomerContactDataChanges() {
+        var customerId = UUID.randomUUID();
+        var original = Customer.create(request("Cliente inicial", "LTFT01", "501234567"), "100001",
+                VatNumberNormalizer.normalize("PT", "501234567"));
+        when(repository.findById(customerId)).thenReturn(Optional.of(original));
+
+        service.update(customerId, request("Cliente atualizado", "LTFT01", "PT 501-234-567"));
+
+        var recipient = org.mockito.ArgumentCaptor.forClass(RecipientRegistration.class);
+        verify(recipientRegistrationService).registerFromCustomer(recipient.capture());
+        assertThat(recipient.getValue().code()).isEqualTo("100001");
+        assertThat(recipient.getValue().designation()).isEqualTo("Cliente atualizado");
+        verify(repository).existsByVatKeyAndIdNot("PT:501234567", customerId);
+    }
+
+    @Test
+    void normalizesSearchAndPassesTheActiveFilterToTheRepository() {
+        Pageable expectedPage = PageRequest.of(2, 20, org.springframework.data.domain.Sort.by("shippingName").ascending());
+        when(repository.search("norte digital", true, expectedPage))
+                .thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
+
+        service.list(2, 20, "  Norte Digital  ", true);
+
+        verify(repository).search("norte digital", true, expectedPage);
     }
 
     private static CustomerRequest request(String shippingName, String agency, String vatNumber) {

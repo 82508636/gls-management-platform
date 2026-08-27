@@ -9,7 +9,9 @@
       { "name": "ADMIN" },
       { "name": "OPERATOR" },
       { "name": "ACCOUNTING" },
-      { "name": "CUSTOMER" }
+      { "name": "CUSTOMER" },
+      { "name": "DRIVER" },
+      { "name": "FRONT_DESK" }
     ]
   },
   "clients": [

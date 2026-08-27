@@ -21,7 +21,8 @@ class Customer {
     @Column(length=50) private String mobile;
     @Column(length=50) private String phone;
     @Column(name="billing_country", length=2) private String billingCountry;
-    @Column(name="vat_number", nullable=false, unique=true, length=50) private String vatNumber;
+    @Column(name="vat_number", nullable=false, length=50) private String vatNumber;
+    @Column(name="vat_key", nullable=false, unique=true, length=60) private String vatKey;
     @Column(name="billing_legal_name", length=200) private String billingLegalName;
     @Column(name="billing_address", length=500) private String billingAddress;
     @Column(name="billing_postal_code", length=20) private String billingPostalCode;
@@ -41,13 +42,13 @@ class Customer {
     @Column(name="updated_at", nullable=false) private OffsetDateTime updatedAt;
 
     protected Customer() {}
-    static Customer create(CustomerRequest request, String customerCode) { var c=new Customer(); c.id=UUID.randomUUID(); c.customerCode=customerCode; c.createdAt=OffsetDateTime.now(ZoneOffset.UTC); c.apply(request); c.active=false; return c; }
-    void updateDetails(CustomerRequest request) { var previousActive=active; apply(request); active=previousActive; }
+    static Customer create(CustomerRequest request, String customerCode, VatNumberNormalizer.NormalizedVat vat) { var c=new Customer(); c.id=UUID.randomUUID(); c.customerCode=customerCode; c.createdAt=OffsetDateTime.now(ZoneOffset.UTC); c.apply(request, vat); c.active=false; return c; }
+    void updateDetails(CustomerRequest request, VatNumberNormalizer.NormalizedVat vat) { var previousActive=active; apply(request, vat); active=previousActive; }
     void setActive(boolean active) { this.active=active; updatedAt=OffsetDateTime.now(ZoneOffset.UTC); }
-    private void apply(CustomerRequest r) {
+    private void apply(CustomerRequest r, VatNumberNormalizer.NormalizedVat vat) {
         abbreviation=n(r.abbreviation()); shippingName=r.shippingName().trim(); agency=r.agency();
         address=n(r.address()); postalCode=n(r.postalCode()); locality=n(r.locality()); country=upper(r.country()); contactEmail=n(r.contactEmail()); mobile=n(r.mobile()); phone=n(r.phone());
-        billingCountry=upper(r.billingCountry()); vatNumber=r.vatNumber().trim(); billingLegalName=n(r.billingLegalName()); billingAddress=n(r.billingAddress()); billingPostalCode=n(r.billingPostalCode()); billingLocality=n(r.billingLocality());
+        billingCountry=vat.country(); vatNumber=vat.number(); vatKey=vat.key(); billingLegalName=n(r.billingLegalName()); billingAddress=n(r.billingAddress()); billingPostalCode=n(r.billingPostalCode()); billingLocality=n(r.billingLocality());
         accountCode=n(r.accountCode()); billingReference=n(r.billingReference()); customerType=r.customerType(); responsibleName=n(r.responsibleName()); billingEmail=n(r.billingEmail()); defaultDocument=n(r.defaultDocument()); exchangeRate=r.exchangeRate(); currency=upper(r.currency());
         invoiceByPost=r.invoiceByPost(); documentsByEmail=r.documentsByEmail(); active=r.active(); updatedAt=OffsetDateTime.now(ZoneOffset.UTC);
     }

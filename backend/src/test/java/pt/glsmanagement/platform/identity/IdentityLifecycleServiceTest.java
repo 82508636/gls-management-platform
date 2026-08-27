@@ -16,7 +16,8 @@ import static org.mockito.Mockito.when;
 class IdentityLifecycleServiceTest {
     private final KeycloakAdminClient keycloak = mock(KeycloakAdminClient.class);
     private final IdentityAuditRepository audit = mock(IdentityAuditRepository.class);
-    private final IdentityLifecycleService service = new IdentityLifecycleService(keycloak, audit);
+    private final IdentityAccessControl accessControl = mock(IdentityAccessControl.class);
+    private final IdentityLifecycleService service = new IdentityLifecycleService(keycloak, audit, accessControl);
     private final Jwt actor = Jwt.withTokenValue("token")
             .header("alg", "none")
             .subject("admin-subject")
@@ -25,7 +26,7 @@ class IdentityLifecycleServiceTest {
 
     @BeforeEach
     void resetAuditCaptorState() {
-        org.mockito.Mockito.reset(keycloak, audit);
+        org.mockito.Mockito.reset(keycloak, audit, accessControl);
     }
 
     @Test
@@ -37,6 +38,7 @@ class IdentityLifecycleServiceTest {
 
         service.join(request, actor);
 
+        verify(accessControl).activate("user-1", PlatformRole.OPERATOR);
         assertAudit("JOINER", "user-1", "", "OPERATOR");
     }
 
@@ -49,6 +51,7 @@ class IdentityLifecycleServiceTest {
 
         service.move("user-1", new MoverRequest(PlatformRole.ACCOUNTING), actor);
 
+        verify(accessControl).activate("user-1", PlatformRole.ACCOUNTING);
         assertAudit("MOVER", "user-1", "OPERATOR", "ACCOUNTING");
     }
 
@@ -61,6 +64,7 @@ class IdentityLifecycleServiceTest {
 
         service.leave("user-1", actor);
 
+        verify(accessControl).disable("user-1");
         assertAudit("LEAVER", "user-1", "ACCOUNTING", "ACCOUNTING");
     }
 

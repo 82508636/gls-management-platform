@@ -6,7 +6,7 @@ import type { AuditedReference } from './CollaboratorManagementPages'
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
 
 type PickupPoint = {
-  id: string; code: string; designation: string; supplier: string
+  id: string; code: string; designation: string
   morningOpen: string | null; morningClose: string | null; afternoonOpen: string | null; afternoonClose: string | null
   address: string; postalCode: string; locality: string; country: string
   email: string | null; phone: string | null; mobile: string | null
@@ -17,7 +17,7 @@ type Page<T> = { content: T[]; page: number; totalElements: number; totalPages: 
 type Recipient = { id: string; code: string | null; designation: string; contactName: string | null; address: string; postalCode: string; locality: string; country: string; email: string | null; phone: string | null; mobile: string | null; lastUsedAt: string }
 
 const emptyPickup: PickupForm = {
-  code: '', designation: '', supplier: '', morningOpen: '', morningClose: '', afternoonOpen: '', afternoonClose: '',
+  code: '', designation: '', morningOpen: '', morningClose: '', afternoonOpen: '', afternoonClose: '',
   address: '', postalCode: '', locality: '', country: 'PT', email: '', phone: '', mobile: '',
   openSaturday: false, openSunday: false, active: true,
 }
@@ -33,11 +33,11 @@ export function PickupPointsPage({ auth }: { auth: AuthSession }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const canManage = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR')
+  const canManage = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'FRONT_DESK')
   const canAdminister = auth.roles.includes('ADMIN')
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('pt-PT')
-    return points.filter(point => !normalized || [point.code, point.designation, point.supplier, point.locality, point.postalCode]
+    return points.filter(point => !normalized || [point.code, point.designation, point.locality, point.postalCode]
       .some(value => value.toLocaleLowerCase('pt-PT').includes(normalized)))
   }, [points, query])
 
@@ -83,16 +83,15 @@ export function PickupPointsPage({ auth }: { auth: AuthSession }) {
     <section className="panel list-panel">
       <div className="customer-toolbar"><label>Pesquisar<input value={query} onChange={event => setQuery(event.target.value)} placeholder="Código, nome ou localidade…" /></label><span className="results-summary">{visible.length} de {points.length} pontos</span></div>
       {error && !open && <p className="error">{error}</p>}
-      {loading && points.length === 0 ? <p>A carregar…</p> : visible.length === 0 ? <p className="empty compact-empty">Ainda não existem Pontos Pickup.</p> : <div className="table-wrap customer-table"><table><thead><tr><th>Código</th><th>Designação</th><th>Fornecedor</th><th>Localidade</th><th>Horário</th><th>Fim de semana</th><th>Estado</th><th>Ações</th></tr></thead><tbody>{visible.map(point => <tr key={point.id}>
-        <td><strong className="customer-code">{point.code}</strong></td><td><strong>{point.designation}</strong><small>{point.address}</small></td><td>{point.supplier}</td><td>{point.locality}<small>{point.postalCode} · {point.country}</small></td><td>{schedule(point)}</td><td>{point.openSaturday ? 'Sáb.' : '—'} {point.openSunday ? 'Dom.' : ''}</td><td><span className={point.active ? 'status-dot active' : 'status-dot'} aria-label={point.active ? 'Ativo' : 'Inativo'} /></td><td><div className="row-actions"><button className="compact-action" disabled={!canManage} onClick={() => edit(point)}>Editar</button>{canAdminister && <button className="compact-action secondary" onClick={() => void changeStatus(point)}>{point.active ? 'Inativar' : 'Ativar'}</button>}</div></td>
+      {loading && points.length === 0 ? <p>A carregar…</p> : visible.length === 0 ? <p className="empty compact-empty">Ainda não existem Pontos Pickup.</p> : <div className="table-wrap customer-table"><table><thead><tr><th>Código</th><th>Designação</th><th>Localidade</th><th>Horário</th><th>Fim de semana</th><th>Estado</th><th>Ações</th></tr></thead><tbody>{visible.map(point => <tr key={point.id}>
+        <td><strong className="customer-code">{point.code}</strong></td><td><strong>{point.designation}</strong><small>{point.address}</small></td><td>{point.locality}<small>{point.postalCode} · {point.country}</small></td><td>{schedule(point)}</td><td>{point.openSaturday ? 'Sáb.' : '—'} {point.openSunday ? 'Dom.' : ''}</td><td><span className={point.active ? 'status-dot active' : 'status-dot'} aria-label={point.active ? 'Ativo' : 'Inativo'} /></td><td><div className="row-actions"><button className="compact-action" disabled={!canManage} onClick={() => edit(point)}>Editar</button>{canAdminister && <button className="compact-action secondary" onClick={() => void changeStatus(point)}>{point.active ? 'Inativar' : 'Ativar'}</button>}</div></td>
       </tr>)}</tbody></table></div>}
       <nav className="pagination"><span>{pageInfo.totalElements} pontos · Página {page + 1} de {pageInfo.totalPages}</span><div><button className="secondary" disabled={pageInfo.first} onClick={() => void load(page - 1)}>Anterior</button><button className="secondary" disabled={pageInfo.last} onClick={() => void load(page + 1)}>Seguinte</button></div></nav>
     </section>
     {open && <div className="overlay" onMouseDown={event => { if (event.target === event.currentTarget) close() }}><aside className="partial pickup-partial" role="dialog" aria-modal="true" aria-labelledby="pickup-title"><div className="partial-head"><div><h2 id="pickup-title">{editingId ? 'Editar Ponto Pickup' : 'Adicionar Ponto Pickup'}</h2><p>Campos obrigatórios demarcados com *</p></div><button className="close" onClick={close} aria-label="Fechar">×</button></div>
       <form className="pickup-form form-grid" onSubmit={save}>
         <label className="col-3">Código *<input required maxLength={30} value={form.code} onChange={e => update('code', e.target.value)} /></label>
-        <label className="col-6">Designação *<input required maxLength={200} value={form.designation} onChange={e => update('designation', e.target.value)} /></label>
-        <label className="col-3">Fornecedor *<input required maxLength={100} list="pickup-suppliers" value={form.supplier} onChange={e => update('supplier', e.target.value)} /><datalist id="pickup-suppliers"><option value="GLS-FAFE"/><option value="GLS-TAIPAS"/></datalist></label>
+        <label className="col-9">Designação *<input required maxLength={200} value={form.designation} onChange={e => update('designation', e.target.value)} /></label>
         <fieldset className="schedule-field col-6"><legend>Horário manhã</legend><label>De<input type="time" value={form.morningOpen ?? ''} onChange={e => update('morningOpen', e.target.value)} /></label><label>Até<input type="time" value={form.morningClose ?? ''} onChange={e => update('morningClose', e.target.value)} /></label></fieldset>
         <fieldset className="schedule-field col-6"><legend>Horário tarde</legend><label>De<input type="time" value={form.afternoonOpen ?? ''} onChange={e => update('afternoonOpen', e.target.value)} /></label><label>Até<input type="time" value={form.afternoonClose ?? ''} onChange={e => update('afternoonClose', e.target.value)} /></label></fieldset>
         <label className="col-12">Morada *<input required maxLength={500} value={form.address} onChange={e => update('address', e.target.value)} /></label>

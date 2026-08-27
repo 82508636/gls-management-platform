@@ -12,7 +12,8 @@ import java.util.*;
 
 @Component
 class KeycloakAdminClient {
-    private static final Set<String> PLATFORM_ROLES = Set.of("ADMIN", "OPERATOR", "ACCOUNTING", "CUSTOMER");
+    private static final Set<String> PLATFORM_ROLES = Arrays.stream(PlatformRole.values())
+            .map(Enum::name).collect(java.util.stream.Collectors.toUnmodifiableSet());
     private final RestClient http;
     private final String realm;
     private final String clientId;
@@ -57,6 +58,7 @@ class KeycloakAdminClient {
 
     IdentityUserResponse move(String userId, PlatformRole role) {
         replacePlatformRoles(userId, role);
+        logout(userId);
         return get(userId);
     }
 
@@ -71,9 +73,13 @@ class KeycloakAdminClient {
         http.put().uri("/admin/realms/{realm}/users/{id}", realm, userId)
                 .headers(headers -> headers.setBearerAuth(token())).contentType(MediaType.APPLICATION_JSON)
                 .body(update).retrieve().toBodilessEntity();
+        logout(userId);
+        return get(userId);
+    }
+
+    private void logout(String userId) {
         http.post().uri("/admin/realms/{realm}/users/{id}/logout", realm, userId)
                 .headers(headers -> headers.setBearerAuth(token())).retrieve().toBodilessEntity();
-        return get(userId);
     }
 
     IdentityUserResponse get(String userId) {

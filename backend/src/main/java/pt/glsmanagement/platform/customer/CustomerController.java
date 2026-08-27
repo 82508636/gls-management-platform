@@ -28,9 +28,11 @@ public class CustomerController {
     @GetMapping
     CustomerPageResponse list(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size
+            @RequestParam(defaultValue = "50") int size,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Boolean active
     ) {
-        return service.list(page, size);
+        return service.list(page, size, query, active);
     }
 
     @GetMapping("/{id}")

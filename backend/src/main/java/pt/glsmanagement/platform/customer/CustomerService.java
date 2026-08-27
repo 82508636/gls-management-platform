@@ -23,11 +23,12 @@ public class CustomerService {
     }
 
     @Transactional(readOnly = true)
-    public CustomerPageResponse list(int page, int requestedSize) {
+    public CustomerPageResponse list(int page, int requestedSize, String query, Boolean active) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(requestedSize, 1), 50);
         var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "shippingName"));
-        return CustomerPageResponse.from(repository.findAll(pageable));
+        var normalizedQuery = query == null || query.isBlank() ? null : query.trim().toLowerCase(java.util.Locale.ROOT);
+        return CustomerPageResponse.from(repository.search(normalizedQuery, active, pageable));
     }
 
     @Transactional(readOnly = true)
@@ -37,16 +38,13 @@ public class CustomerService {
 
     @Transactional
     public CustomerResponse create(CustomerRequest request) {
-        var vatNumber = request.vatNumber().trim();
-        if (repository.existsByVatNumber(vatNumber)) {
-            throw new DuplicateCustomerVatNumberException(vatNumber);
+        var vat = VatNumberNormalizer.normalize(vatCountry(request), request.vatNumber());
+        if (repository.existsByVatKey(vat.key())) {
+            throw new DuplicateCustomerVatNumberException(vat.number());
         }
         var customerCode = codeGenerator.next(request.agency());
-        var customer = repository.save(Customer.create(request, customerCode));
-        recipientRegistrationService.registerFromCustomer(new RecipientRegistration(
-                customer.customerCode(), customer.shippingName(), null, customer.address(), customer.postalCode(),
-                customer.locality(), customer.country(), customer.contactEmail(), customer.phone(), customer.mobile()
-        ));
+        var customer = repository.save(Customer.create(request, customerCode, vat));
+        synchronizeRecipient(customer);
         return CustomerResponse.from(customer);
     }
 
@@ -54,11 +52,12 @@ public class CustomerService {
     public CustomerResponse update(UUID id, CustomerRequest request) {
         var customer = find(id);
         if (!customer.agency().equals(request.agency())) throw new IllegalArgumentException("Customer agency is immutable");
-        var vatNumber = request.vatNumber().trim();
-        if (repository.existsByVatNumberAndIdNot(vatNumber, id)) {
-            throw new DuplicateCustomerVatNumberException(vatNumber);
+        var vat = VatNumberNormalizer.normalize(vatCountry(request), request.vatNumber());
+        if (repository.existsByVatKeyAndIdNot(vat.key(), id)) {
+            throw new DuplicateCustomerVatNumberException(vat.number());
         }
-        customer.updateDetails(request);
+        customer.updateDetails(request, vat);
+        synchronizeRecipient(customer);
         return CustomerResponse.from(customer);
     }
 
@@ -76,5 +75,17 @@ public class CustomerService {
 
     private Customer find(UUID id) {
         return repository.findById(id).orElseThrow(() -> new CustomerNotFoundException(id));
+    }
+
+    private void synchronizeRecipient(Customer customer) {
+        recipientRegistrationService.registerFromCustomer(new RecipientRegistration(
+                customer.customerCode(), customer.shippingName(), null, customer.address(), customer.postalCode(),
+                customer.locality(), customer.country(), customer.contactEmail(), customer.phone(), customer.mobile()
+        ));
+    }
+
+    private static String vatCountry(CustomerRequest request) {
+        return request.billingCountry() == null || request.billingCountry().isBlank()
+                ? request.country() : request.billingCountry();
     }
 }

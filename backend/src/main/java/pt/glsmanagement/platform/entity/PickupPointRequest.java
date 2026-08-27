@@ -11,7 +11,6 @@ import java.time.LocalTime;
 public record PickupPointRequest(
         @NotBlank @Size(max = 30) String code,
         @NotBlank @Size(max = 200) String designation,
-        @NotBlank @Size(max = 100) String supplier,
         LocalTime morningOpen,
         LocalTime morningClose,
         LocalTime afternoonOpen,
@@ -30,6 +29,9 @@ public record PickupPointRequest(
     public PickupPointRequest {
         validatePeriod(morningOpen, morningClose, "morning");
         validatePeriod(afternoonOpen, afternoonClose, "afternoon");
+        if (morningClose != null && afternoonOpen != null && morningClose.isAfter(afternoonOpen)) {
+            throw new IllegalArgumentException("Pickup schedules cannot overlap");
+        }
     }
 
     private static void validatePeriod(LocalTime start, LocalTime end, String period) {

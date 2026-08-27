@@ -24,7 +24,7 @@ Plataforma web de gestão comercial e financeira de envios GLS. A GLS continua a
 
 O backend fica disponível em `http://localhost:8080`, o frontend em `http://localhost:5173`, o Keycloak em `http://localhost:8180` e o health check em `http://localhost:8080/actuator/health`.
 
-O realm local `ltft` é importado automaticamente com o cliente público `ltft-web` e os perfis `ADMIN`, `OPERATOR`, `ACCOUNTING` e `CUSTOMER`. As credenciais administrativas locais vêm de `.env`; os valores de exemplo não devem ser usados em produção.
+O realm local `ltft` é importado automaticamente com o cliente público `ltft-web` e os perfis `ADMIN`, `OPERATOR`, `ACCOUNTING`, `CUSTOMER`, `DRIVER` e `FRONT_DESK`. As credenciais administrativas locais vêm de `.env`; os valores de exemplo não devem ser usados em produção.
 
 O frontend autentica através de OIDC Authorization Code com PKCE. Ao abrir `http://localhost:5173`, a aplicação tenta recuperar silenciosamente uma sessão SSO existente (`prompt=none`); sem sessão, apresenta o botão `Login` sem entrar num ciclo de redirects. A password é introduzida exclusivamente no Keycloak. O cabeçalho apresenta o utilizador autenticado e permite terminar a sessão através do endpoint OIDC com `id_token_hint`. Access, refresh e ID tokens são mantidos apenas em memória; não são guardados em `localStorage`. O refresh token é renovado através de uma única operação partilhada quando existem pedidos concorrentes.
 
@@ -47,7 +47,7 @@ Administradores acedem a `/admin/utilizadores` através da opção `Gerir utiliz
 
 O backend usa o cliente confidencial `ltft-jml-service`. Num realm já existente, crie esse cliente com `Service accounts roles` ativo, configure o segredo definido em `KEYCLOAK_JML_CLIENT_SECRET` e atribua à conta técnica as client roles `manage-users`, `view-users`, `query-users` e `view-realm` do cliente `realm-management`. Não exponha esse segredo no frontend.
 
-O primeiro módulo funcional permite criar, listar e editar clientes em `http://localhost:5173/clientes`. A API paginada está disponível em `/api/customers`, com um máximo de 50 clientes por pedido.
+O primeiro módulo funcional permite criar, listar e editar clientes em `http://localhost:5173/clientes`. A API paginada está disponível em `/api/customers`, com um máximo de 50 clientes por pedido. A pesquisa é executada no backend através de `query` e pode ser combinada com o filtro booleano `active`; código, designação, NIF, contactos, localidade e agência são pesquisáveis.
 
 A ficha de cliente separa dados gerais/contactos dos dados de faturação. São obrigatórios a designação para expedição, a agência (`LTFT01` Fafe ou `LTFT02` Taipas) e o NIF. O código interno de seis dígitos fica bloqueado no formulário e é atribuído apenas quando a criação é aprovada: começa por `1` em Fafe e por `2` nas Taipas, seguindo um contador transacional independente por agência. Código e agência tornam-se imutáveis após a criação. Cód. Conta, Ref. Faturação e câmbio permanecem opcionais e em avaliação; não existe integração com o Enovo.
 
@@ -63,6 +63,12 @@ A conta do cliente está disponível em `/clientes/{id}/conta`. Nesta fase, os s
 
 O frontend já contém a apresentação da conta e a geração de PDF, mas não injeta serviços mock. Enquanto não existir uma fonte real de serviços, a conta aparece vazia e o botão `Gerar resumo PDF` permanece desativado. O PDF não aplica IVA nem regras fiscais ainda não especificadas.
 
+### Tabelas de preços
+
+O primeiro módulo de configuração comercial cobre Business Parcel e Express Parcel. Administradores podem rever e editar a tabela inicial enquanto está em rascunho; administradores e contabilidade podem consultar preços e simular o custo de um envio em `/configuracao/tabelas-precos`. O cálculo considera peso real e volumétrico, escalões, quilograma adicional, combustível e IVA. Não existe ainda ligação à GLS nem geração automática de envios ou faturas.
+
+O modelo, as regras e os endpoints estão documentados em [`docs/PRICING.md`](docs/PRICING.md).
+
 ## Validação
 
 - Backend: `cd backend && mvn test`
@@ -70,7 +76,7 @@ O frontend já contém a apresentação da conta e a geração de PDF, mas não 
 
 ### Testes E2E de segurança
 
-O script `scripts/security-e2e.mjs` valida login, logout, recuperação da sessão após refresh/deep-link, as fronteiras dos perfis `ADMIN`, `OPERATOR`, `ACCOUNTING` e `CUSTOMER` e o ciclo Joiner–Mover–Leaver através da plataforma. A CI confirma adicionalmente os três eventos `JOINER`, `MOVER` e `LEAVER` na tabela de auditoria PostgreSQL. O próprio teste cria utilizadores temporários no Keycloak e remove-os no fim; passwords e tokens não são guardados no repositório.
+O script `scripts/security-e2e.mjs` valida login, logout, recuperação da sessão após refresh/deep-link, as fronteiras dos perfis `ADMIN`, `OPERATOR`, `ACCOUNTING`, `CUSTOMER`, `DRIVER` e `FRONT_DESK` e o ciclo Joiner–Mover–Leaver através da plataforma. A CI confirma adicionalmente os três eventos `JOINER`, `MOVER` e `LEAVER` na tabela de auditoria PostgreSQL. O próprio teste cria utilizadores temporários no Keycloak e remove-os no fim; passwords e tokens não são guardados no repositório.
 
 Com PostgreSQL, Keycloak, backend e frontend ativos, instale `playwright` como dependência de desenvolvimento do frontend e execute a partir da raiz:
 

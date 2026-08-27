@@ -1,6 +1,7 @@
 package pt.glsmanagement.platform.customer;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -18,7 +19,7 @@ class CustomerExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "Não foi possível encontrar o recurso solicitado.", Map.of());
     }
 
-    @ExceptionHandler(DuplicateCustomerVatNumberException.class)
+    @ExceptionHandler({DuplicateCustomerVatNumberException.class, DataIntegrityViolationException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     ApiError duplicate(RuntimeException exception) {
         return error(HttpStatus.CONFLICT, "Não foi possível guardar os dados.", Map.of());

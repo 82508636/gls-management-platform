@@ -16,7 +16,6 @@ class PickupPoint {
     @Id private UUID id;
     @Column(nullable = false, unique = true, length = 30) private String code;
     @Column(nullable = false, length = 200) private String designation;
-    @Column(nullable = false, length = 100) private String supplier;
     @Column(name = "morning_open") private LocalTime morningOpen;
     @Column(name = "morning_close") private LocalTime morningClose;
     @Column(name = "afternoon_open") private LocalTime afternoonOpen;
@@ -45,7 +44,7 @@ class PickupPoint {
     void setActive(boolean value) { active = value; updatedAt = OffsetDateTime.now(ZoneOffset.UTC); }
 
     private void apply(PickupPointRequest request) {
-        code = request.code().trim().toUpperCase(); designation = request.designation().trim(); supplier = request.supplier().trim();
+        code = request.code().trim().toUpperCase(); designation = request.designation().trim();
         morningOpen = request.morningOpen(); morningClose = request.morningClose(); afternoonOpen = request.afternoonOpen(); afternoonClose = request.afternoonClose();
         address = request.address().trim(); postalCode = request.postalCode().trim(); locality = request.locality().trim(); country = request.country().trim().toUpperCase();
         email = optional(request.email()); phone = optional(request.phone()); mobile = optional(request.mobile());
@@ -55,7 +54,7 @@ class PickupPoint {
     private static String optional(String value) { return value == null || value.isBlank() ? null : value.trim(); }
 
     UUID id() { return id; } String code() { return code; } String designation() { return designation; }
-    String supplier() { return supplier; } LocalTime morningOpen() { return morningOpen; } LocalTime morningClose() { return morningClose; }
+    LocalTime morningOpen() { return morningOpen; } LocalTime morningClose() { return morningClose; }
     LocalTime afternoonOpen() { return afternoonOpen; } LocalTime afternoonClose() { return afternoonClose; }
     String address() { return address; } String postalCode() { return postalCode; } String locality() { return locality; }
     String country() { return country; } String email() { return email; } String phone() { return phone; } String mobile() { return mobile; }

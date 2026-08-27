@@ -6,7 +6,8 @@ import { AuthSession, initializeAuth } from './auth'
 import { AdminUsersPage } from './AdminUsersPage'
 import { CustomerFormFields, type VatValidationRequest, type VatValidationResult } from './CustomerFormFields'
 import { CollaboratorCreatePage, CollaboratorsPage, PickupPointsPage, RecipientsPage, SuppliersStandbyPage } from './EntitiesPages'
-import { initialAccountProfiles, initialProfessionalCategories, ReferenceManagementPage } from './CollaboratorManagementPages'
+import { type AuditedReference, ReferenceManagementPage } from './CollaboratorManagementPages'
+import { PricingPlansPage } from './PricingPages'
 import ltftLogoUrl from './assets/ltft-logo.jpg'
 import './styles.css'
 
@@ -25,7 +26,8 @@ function navigate(path: string) {
 }
 
 function Header({ auth, path }: { auth: AuthSession; path: string }) {
-  const canViewEntities = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
+  const canViewEntities = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING' || role === 'FRONT_DESK')
+  const canViewPricing = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
   const entitiesMenuRef = useRef<HTMLDivElement>(null)
   const entitiesMenuCloseTimer = useRef<number | undefined>(undefined)
   const [entitiesMenuOpen, setEntitiesMenuOpen] = useState(false)
@@ -81,6 +83,7 @@ function Header({ auth, path }: { auth: AuthSession; path: string }) {
               <button className={isCurrentPage('/entidades/fornecedores') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/fornecedores') ? 'page' : undefined} onClick={() => goToPage('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
               {auth.roles.includes('ADMIN') && <button className={isCurrentPage('/entidades/colaboradores') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/colaboradores') ? 'page' : undefined} onClick={() => goToPage('/entidades/colaboradores')}>Colaboradores</button>}
             </div>
+            {canViewPricing && <><p className="drawer-category-label">Configuração comercial</p><button className={`drawer-page-link${isCurrentPage('/configuracao/tabelas-precos') ? ' is-active' : ''}`} aria-current={isCurrentPage('/configuracao/tabelas-precos') ? 'page' : undefined} onClick={() => goToPage('/configuracao/tabelas-precos')}>Tabelas de preços</button></>}
             {auth.roles.includes('ADMIN') && <><p className="drawer-category-label">Administração</p><button className={`drawer-page-link${isCurrentPage('/admin/utilizadores') ? ' is-active' : ''}`} aria-current={isCurrentPage('/admin/utilizadores') ? 'page' : undefined} onClick={() => goToPage('/admin/utilizadores')}>Utilizadores</button></>}
           </div>
         </nav>
@@ -128,7 +131,7 @@ function ServiceRow({ service }: { service: CustomerService }) {
   return <tr><td><strong>{service.reference}</strong><small>{service.description}</small></td><td>{formatDate(service.serviceDate)}</td><td>{formatDate(service.dueDate)}</td><td className="money">{formatCurrency(service.amount)}</td><td><span className={service.status === 'PAID' ? 'badge active' : 'badge pending'}>{service.status === 'PAID' ? 'Pago' : 'Por pagar'}</span>{service.paidAt && <small>em {formatDate(service.paidAt)}</small>}</td></tr>
 }
 
-function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer[]; loadCustomers: (page: number) => Promise<CustomerPage>; auth: AuthSession }) {
+function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer[]; loadCustomers: (page: number, query: string, active: boolean | null) => Promise<CustomerPage>; auth: AuthSession }) {
   const [page, setPage] = useState(0)
   const [pageInfo, setPageInfo] = useState({ totalElements: 0, totalPages: 1, first: true, last: true })
   const [form, setForm] = useState<CustomerForm>(emptyForm)
@@ -138,35 +141,32 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
-  const canManage = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR')
+  const loadSequence = useRef(0)
+  const canManage = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'FRONT_DESK')
   const canAdminister = auth.roles.includes('ADMIN')
   const canViewAccount = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
-  const visibleCustomers = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('pt-PT')
-    return customers.filter(customer =>
-      (statusFilter === 'ALL' || (statusFilter === 'ACTIVE' ? customer.active : !customer.active)) &&
-      (!query || [customer.customerCode, customer.shippingName, customer.vatNumber, customer.contactEmail, customer.locality, customer.agency]
-        .some(value => value?.toLocaleLowerCase('pt-PT').includes(query)))
-    )
-  }, [customers, search, statusFilter])
-
   async function loadPage(targetPage: number) {
+    const sequence = ++loadSequence.current
     setLoading(true)
     try {
-      let result = await loadCustomers(targetPage)
+      const active = statusFilter === 'ALL' ? null : statusFilter === 'ACTIVE'
+      let result = await loadCustomers(targetPage, search, active)
+      if (sequence !== loadSequence.current) return
       if (targetPage > 0 && result.content.length === 0 && result.totalElements > 0) {
-        result = await loadCustomers(targetPage - 1)
+        result = await loadCustomers(targetPage - 1, search, active)
+        if (sequence !== loadSequence.current) return
       }
       setPage(result.page)
       setPageInfo({ totalElements: result.totalElements, totalPages: result.totalPages || 1, first: result.first, last: result.last })
       setError('')
     } catch {
+      if (sequence !== loadSequence.current) return
       setPageInfo({ totalElements: 0, totalPages: 1, first: true, last: true })
       setError(GENERIC_LOAD_ERROR)
     }
-    finally { setLoading(false) }
+    finally { if (sequence === loadSequence.current) setLoading(false) }
   }
-  useEffect(() => { void loadPage(0) }, [])
+  useEffect(() => { const timer = window.setTimeout(() => void loadPage(0), 300); return () => window.clearTimeout(timer) }, [search, statusFilter])
 
   function updateField<K extends keyof CustomerForm>(field: K, value: CustomerForm[K]) { setForm(current => ({ ...current, [field]: value })) }
   function closeForm() { setFormOpen(false); setEditingId(null); setForm(emptyForm); setError('') }
@@ -220,11 +220,11 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
     <section className="panel list-panel">
       <div className="customer-toolbar">
         <div className="toolbar-actions">{canManage && <button onClick={create}>+ Novo</button>}<label>Código ou cliente<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Pesquisar…" /></label><label>Estado<select value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)}><option value="ALL">Todos</option><option value="ACTIVE">Ativos</option><option value="INACTIVE">Inativos</option></select></label></div>
-        <span className="results-summary">{visibleCustomers.length} de {customers.length} clientes</span>
+        <span className="results-summary">{customers.length} de {pageInfo.totalElements} clientes</span>
       </div>
       {error && !formOpen && <p className="error">{error}</p>}
-      {loading && customers.length === 0 ? <p>A carregar…</p> : visibleCustomers.length === 0 ? <p className="empty compact-empty">Não foram encontrados clientes.</p> : <div className="table-wrap customer-table"><table><thead><tr><th>Código</th><th>Designação social</th><th>Contactos</th><th>Localidade</th><th>Agência</th><th>Estado</th><th>Ações</th></tr></thead><tbody>
-        {visibleCustomers.map(customer => { const canChange = canManage; const canUseAdminActions = canAdminister; return <tr key={customer.id}><td><strong className="customer-code">{customer.customerCode}</strong><small>{customer.agency}</small></td><td><strong>{customer.shippingName}</strong><small>NIF: {customer.vatNumber}</small></td><td><span>{customer.mobile || customer.phone || '—'}</span><small>{customer.contactEmail || 'Sem email'}</small></td><td>{customer.locality || '—'}<small>{customer.country || '—'}</small></td><td>{customer.agency === 'LTFT01' ? 'Fafe' : 'Taipas'}</td><td><span className={customer.active ? 'status-dot active' : 'status-dot'} title={customer.active ? 'Ativo' : 'Inativo'} aria-label={customer.active ? 'Ativo' : 'Inativo'} /></td><td><div className="split-action"><button className="edit-main" disabled={!canChange} title={!canManage ? 'Sem permissão para editar' : undefined} onClick={() => edit(customer)}>Editar</button><details><summary aria-label={`Mais ações para ${customer.shippingName}`}><span className="action-arrow" aria-hidden="true" /></summary><div className="action-dropdown">{canViewAccount && <button onClick={() => navigate(`/clientes/${customer.id}/conta`)}>Conta</button>}<button disabled={!canUseAdminActions} onClick={() => void toggleActive(customer)}>{customer.active ? 'Inativar cliente' : 'Ativar cliente'}</button><button disabled>Converter em prospect <small>Em preparação</small></button><button disabled>Histórico de edições <small>Em preparação</small></button><hr/><button disabled>Autorização de débito direto <small>Em preparação</small></button><hr/><button className="delete-action" disabled={!canUseAdminActions} onClick={() => void deleteCustomer(customer)}>Eliminar</button></div></details></div></td></tr> })}
+      {loading && customers.length === 0 ? <p>A carregar…</p> : customers.length === 0 ? <p className="empty compact-empty">Não foram encontrados clientes.</p> : <div className="table-wrap customer-table"><table><thead><tr><th>Código</th><th>Designação social</th><th>Contactos</th><th>Localidade</th><th>Agência</th><th>Estado</th><th>Ações</th></tr></thead><tbody>
+        {customers.map(customer => { const canChange = canManage; const canUseAdminActions = canAdminister; return <tr key={customer.id}><td><strong className="customer-code">{customer.customerCode}</strong><small>{customer.agency}</small></td><td><strong>{customer.shippingName}</strong><small>NIF: {customer.vatNumber}</small></td><td><span>{customer.mobile || customer.phone || '—'}</span><small>{customer.contactEmail || 'Sem email'}</small></td><td>{customer.locality || '—'}<small>{customer.country || '—'}</small></td><td>{customer.agency === 'LTFT01' ? 'Fafe' : 'Taipas'}</td><td><span className={customer.active ? 'status-dot active' : 'status-dot'} title={customer.active ? 'Ativo' : 'Inativo'} aria-label={customer.active ? 'Ativo' : 'Inativo'} /></td><td><div className="split-action"><button className="edit-main" disabled={!canChange} title={!canManage ? 'Sem permissão para editar' : undefined} onClick={() => edit(customer)}>Editar</button><details><summary aria-label={`Mais ações para ${customer.shippingName}`}><span className="action-arrow" aria-hidden="true" /></summary><div className="action-dropdown">{canViewAccount && <button onClick={() => navigate(`/clientes/${customer.id}/conta`)}>Conta</button>}<button disabled={!canUseAdminActions} onClick={() => void toggleActive(customer)}>{customer.active ? 'Inativar cliente' : 'Ativar cliente'}</button><button disabled>Converter em prospect <small>Em preparação</small></button><button disabled>Histórico de edições <small>Em preparação</small></button><hr/><button disabled>Autorização de débito direto <small>Em preparação</small></button><hr/><button className="delete-action" disabled={!canUseAdminActions} onClick={() => void deleteCustomer(customer)}>Eliminar</button></div></details></div></td></tr> })}
       </tbody></table></div>}
       <nav className="pagination" aria-label="Paginação de clientes"><span>{pageInfo.totalElements} clientes · Página {page + 1} de {Math.max(pageInfo.totalPages, 1)}</span><div><button className="secondary" disabled={pageInfo.first} onClick={() => void loadPage(page - 1)}>Anterior</button><button className="secondary" disabled={pageInfo.last} onClick={() => void loadPage(page + 1)}>Seguinte</button></div></nav>
     </section>
@@ -237,25 +237,49 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
 function App({ auth }: { auth: AuthSession }) {
   const [path, setPath] = useState(window.location.pathname)
   const [apiCustomers, setApiCustomers] = useState<Customer[]>([])
-  const [accountProfiles, setAccountProfiles] = useState(initialAccountProfiles)
-  const [professionalCategories, setProfessionalCategories] = useState(initialProfessionalCategories)
+  const [accountProfiles, setAccountProfiles] = useState<AuditedReference[]>([])
+  const [professionalCategories, setProfessionalCategories] = useState<AuditedReference[]>([])
   useEffect(() => { const update = () => setPath(window.location.pathname); window.addEventListener('popstate', update); return () => window.removeEventListener('popstate', update) }, [])
-  async function loadCustomers(page: number): Promise<CustomerPage> {
+  useEffect(() => {
+    if (!auth.roles.includes('ADMIN')) return
+    void (async () => {
+      try {
+        const [profilesResponse, categoriesResponse] = await Promise.all([
+          auth.fetch(`${apiUrl}/reference-data/account-profiles`),
+          auth.fetch(`${apiUrl}/reference-data/professional-categories`),
+        ])
+        if (!profilesResponse.ok || !categoriesResponse.ok) throw new Error('reference load failed')
+        setAccountProfiles(await profilesResponse.json() as AuditedReference[])
+        setProfessionalCategories(await categoriesResponse.json() as AuditedReference[])
+      } catch {
+        setAccountProfiles([])
+        setProfessionalCategories([])
+      }
+    })()
+  }, [])
+  const customerRequest = useRef<AbortController | null>(null)
+  async function loadCustomers(page: number, query: string, active: boolean | null): Promise<CustomerPage> {
+    customerRequest.current?.abort()
+    const controller = new AbortController()
+    customerRequest.current = controller
     try {
-      const response = await auth.fetch(`${apiUrl}/customers?page=${page}&size=50`)
+      const parameters = new URLSearchParams({ page: String(page), size: '50' })
+      if (query.trim()) parameters.set('query', query.trim())
+      if (active !== null) parameters.set('active', String(active))
+      const response = await auth.fetch(`${apiUrl}/customers?${parameters}`, { signal: controller.signal })
       if (!response.ok) throw new Error(`Customer request failed with status ${response.status}`)
       const result = await response.json() as CustomerPage
-      setApiCustomers(result.content)
+      if (customerRequest.current === controller) setApiCustomers(result.content)
       return result
     } catch (error) {
-      setApiCustomers([])
+      if (customerRequest.current === controller) setApiCustomers([])
       throw error
     }
   }
   const customers = apiCustomers
   const match = path.match(/^\/clientes\/([^/]+)\/conta$/)
   const customer = match ? customers.find(item => item.id === decodeURIComponent(match[1])) : null
-  const canUseCustomerArea = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING')
+  const canUseCustomerArea = auth.roles.some(role => role === 'ADMIN' || role === 'OPERATOR' || role === 'ACCOUNTING' || role === 'FRONT_DESK')
   const canUseCustomerAccount = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
   const isAdminUsers = path === '/admin/utilizadores'
   const isRecipients = path === '/entidades/destinatarios'
@@ -265,10 +289,12 @@ function App({ auth }: { auth: AuthSession }) {
   const isCollaboratorCreate = path === '/entidades/colaboradores/create'
   const isAccountProfiles = path === '/admin/perfis'
   const isProfessionalCategories = path === '/entidades/colaboradores/categorias-profissionais'
+  const isPricingPlans = path === '/configuracao/tabelas-precos'
   const isCollaboratorArea = isCollaborators || isCollaboratorCreate || isAccountProfiles || isProfessionalCategories
   const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaboratorArea
-  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isAccountProfiles && auth.roles.includes('ADMIN') ? <ReferenceManagementPage actor={auth.displayName} title="Gerir perfis de conta" trail={['Administração','Perfis de conta']} description="Define os perfis disponíveis no registo de colaboradores. As permissões técnicas serão configuradas quando a matriz de acesso estiver aprovada." createTitle="Novo perfil" editTitle="Editar perfil" idHint="Ex.: DRIVER" items={accountProfiles} onChange={setAccountProfiles} onBack={() => navigate('/entidades/colaboradores/create')}/> : isProfessionalCategories && auth.roles.includes('ADMIN') ? <ReferenceManagementPage actor={auth.displayName} title="Gerir categorias profissionais" trail={['Entidades','Colaboradores','Categorias profissionais']} description="Mantém as categorias profissionais sem eliminar o respetivo histórico de auditoria." createTitle="Nova categoria profissional" editTitle="Editar categoria profissional" idHint="Ex.: 7" items={professionalCategories} onChange={setProfessionalCategories} onBack={() => navigate('/entidades/colaboradores/create')}/> : isCollaboratorCreate && auth.roles.includes('ADMIN') ? <CollaboratorCreatePage accountProfiles={accountProfiles} professionalCategories={professionalCategories} onManageProfiles={() => navigate('/admin/perfis')} onManageCategories={() => navigate('/entidades/colaboradores/categorias-profissionais')}/> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage onCreate={() => navigate('/entidades/colaboradores/create')} /> : null
-  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
+  const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isAccountProfiles && auth.roles.includes('ADMIN') ? <ReferenceManagementPage auth={auth} endpoint="account-profiles" title="Gerir perfis de conta" trail={['Administração','Perfis de conta']} description="Catálogo de perfis disponível no registo de colaboradores. As permissões efetivas continuam a ser geridas no Keycloak." createTitle="Novo perfil" editTitle="Editar perfil" idHint="Ex.: DRIVER" items={accountProfiles} onChange={setAccountProfiles} onBack={() => navigate('/entidades/colaboradores/create')}/> : isProfessionalCategories && auth.roles.includes('ADMIN') ? <ReferenceManagementPage auth={auth} endpoint="professional-categories" title="Gerir categorias profissionais" trail={['Entidades','Colaboradores','Categorias profissionais']} description="Mantém as categorias profissionais sem eliminar o respetivo histórico de auditoria." createTitle="Nova categoria profissional" editTitle="Editar categoria profissional" idHint="Ex.: 7" items={professionalCategories} onChange={setProfessionalCategories} onBack={() => navigate('/entidades/colaboradores/create')}/> : isCollaboratorCreate && auth.roles.includes('ADMIN') ? <CollaboratorCreatePage accountProfiles={accountProfiles} professionalCategories={professionalCategories} onManageProfiles={() => navigate('/admin/perfis')} onManageCategories={() => navigate('/entidades/colaboradores/categorias-profissionais')}/> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage onCreate={() => navigate('/entidades/colaboradores/create')} /> : null
+  const canViewPricing = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
+  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isPricingPlans && canViewPricing ? <PricingPlansPage auth={auth}/> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) || (isPricingPlans && !canViewPricing) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value) }
