@@ -1,5 +1,7 @@
 package pt.glsmanagement.platform.customer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -9,6 +11,7 @@ import java.util.Set;
 
 @Service
 class VatValidationService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(VatValidationService.class);
     private static final Set<String> VIES_COUNTRIES = Set.of(
             "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES", "FI", "FR",
             "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT", "RO",
@@ -37,9 +40,15 @@ class VatValidationService {
 
         try {
             var result = gateway.validate(countryCode, vatNumber);
-            var status = result.valid() ? VatValidationStatus.VALID : VatValidationStatus.NOT_VALID;
-            return response(countryCode, vatNumber, true, status);
+            if (!result.valid()) {
+                return response(countryCode, vatNumber, true, VatValidationStatus.NOT_VALID);
+            }
+            return response(countryCode, vatNumber, true, VatValidationStatus.VALID,
+                    VatRegistrationDetailsMapper.map(countryCode, result.registeredName(), result.registeredAddress(),
+                            result.registeredStreet(), result.registeredPostalCode(), result.registeredLocality()));
         } catch (VatValidationProviderUnavailableException exception) {
+            LOGGER.warn("VIES validation provider unavailable for country {} ({})",
+                    countryCode, rootCauseName(exception));
             return response(countryCode, vatNumber, true, VatValidationStatus.UNAVAILABLE);
         }
     }
@@ -73,12 +82,32 @@ class VatValidationService {
             boolean formatValid,
             VatValidationStatus status
     ) {
+        return response(countryCode, vatNumber, formatValid, status, VatRegistrationDetailsMapper.Details.empty());
+    }
+
+    private static VatValidationResponse response(
+            String countryCode,
+            String vatNumber,
+            boolean formatValid,
+            VatValidationStatus status,
+            VatRegistrationDetailsMapper.Details details
+    ) {
         return new VatValidationResponse(
                 countryCode,
                 vatNumber,
                 formatValid,
                 status,
+                details.name(),
+                details.address(),
+                details.postalCode(),
+                details.locality(),
                 OffsetDateTime.now(ZoneOffset.UTC)
         );
+    }
+
+    private static String rootCauseName(Throwable exception) {
+        var cause = exception;
+        while (cause.getCause() != null) cause = cause.getCause();
+        return cause.getClass().getSimpleName();
     }
 }

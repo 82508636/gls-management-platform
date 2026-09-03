@@ -12,6 +12,10 @@ export type VatValidationResult = {
   vatNumber: string
   formatValid: boolean
   viesStatus: 'VALID' | 'NOT_VALID' | 'NOT_APPLICABLE' | 'NOT_CHECKED' | 'UNAVAILABLE'
+  registeredName: string | null
+  registeredAddress: string | null
+  registeredPostalCode: string | null
+  registeredLocality: string | null
   checkedAt: string
 }
 type Props = {
@@ -56,9 +60,21 @@ export function CustomerFormFields({ form, editing, update, validateVat }: Props
         vatNumber: form.vatNumber,
         subjectType: form.customerType,
       })
-      if (validationSequence.current === sequence) setValidation(result)
-    } catch {
-      if (validationSequence.current === sequence) setValidationError('Não foi possível validar o NIF. Tente novamente.')
+      if (validationSequence.current === sequence) {
+        setValidation(result)
+        if (result.viesStatus === 'VALID') {
+          if (result.registeredName) update('billingLegalName', result.registeredName)
+          if (result.registeredAddress) update('billingAddress', result.registeredAddress)
+          if (result.registeredPostalCode) update('billingPostalCode', result.registeredPostalCode)
+          if (result.registeredLocality) update('billingLocality', result.registeredLocality)
+        }
+      }
+    } catch (exception) {
+      if (validationSequence.current === sequence) {
+        setValidationError(exception instanceof Error && exception.message
+          ? exception.message
+          : 'Não foi possível validar o NIF. Tente novamente.')
+      }
     } finally {
       if (validationSequence.current === sequence) setValidating(false)
     }
@@ -88,7 +104,7 @@ export function CustomerFormFields({ form, editing, update, validateVat }: Props
         <label className="col-2">País<select value={form.billingCountry ?? 'PT'} onChange={event => update('billingCountry', event.target.value)}>{countries.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>
         <label className="col-3">NIF *
           <div className="inline-field"><input required maxLength={32} value={form.vatNumber} onChange={event => update('vatNumber', event.target.value)} aria-describedby="vat-validation-result" /><button type="button" className="secondary" disabled={validating || !form.billingCountry || !form.vatNumber.trim()} onClick={() => void handleVatValidation()}>{validating ? 'A validar…' : 'Validar'}</button></div>
-          <small>Validação independente dos restantes dados de faturação</small>
+          <small>Quando disponíveis no VIES, a designação e a morada fiscal serão preenchidas automaticamente</small>
         </label>
         <label className="col-7">Designação social<input maxLength={200} value={form.billingLegalName ?? ''} onChange={event => update('billingLegalName', event.target.value)} /></label>
         {(validation || validationError) && <div id="vat-validation-result" className={`vat-validation col-12 ${validationClass(validation)}`} role="status" aria-live="polite">{validationError || validationMessage(validation!)}</div>}
@@ -119,7 +135,12 @@ function validationClass(validation: VatValidationResult | null) {
 function validationMessage(validation: VatValidationResult) {
   const isPortuguese = validation.countryCode === 'PT'
   if (!validation.formatValid || validation.viesStatus === 'NOT_CHECKED') return isPortuguese ? 'NIF com formato ou dígito de controlo inválido. O VIES não foi consultado.' : 'Número fiscal com formato inválido. O VIES não foi consultado.'
-  if (validation.viesStatus === 'VALID') return 'Empresa confirmada no VIES para operações intracomunitárias.'
+  if (validation.viesStatus === 'VALID') {
+    const hasDetails = Boolean(validation.registeredName || validation.registeredAddress || validation.registeredPostalCode || validation.registeredLocality)
+    return hasDetails
+      ? 'Empresa confirmada no VIES. Os dados fiscais disponíveis foram preenchidos automaticamente.'
+      : 'Empresa confirmada no VIES para operações intracomunitárias. Este país não forneceu nome ou morada.'
+  }
   if (validation.viesStatus === 'NOT_VALID') return 'Número fiscal com formato aceite, mas não confirmado no VIES. Isto não prova que o número ou a empresa não existem.'
   if (validation.viesStatus === 'NOT_APPLICABLE') return isPortuguese ? 'NIF com formato e dígito de controlo válidos. O VIES não é aplicável a este tipo de cliente.' : 'Número fiscal com formato aceite. O VIES não é aplicável a este tipo de cliente ou país.'
   return isPortuguese ? 'NIF com formato e dígito de controlo válidos. Não foi possível consultar o VIES neste momento.' : 'Número fiscal com formato aceite. Não foi possível consultar o VIES neste momento.'

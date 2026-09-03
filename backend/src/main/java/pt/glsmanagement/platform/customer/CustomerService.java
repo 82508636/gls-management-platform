@@ -7,10 +7,10 @@ import org.springframework.transaction.annotation.Transactional;
 import pt.glsmanagement.platform.entity.RecipientRegistration;
 import pt.glsmanagement.platform.entity.RecipientRegistrationService;
 
-import java.util.UUID;
+import java.util.*;
 
 @Service
-public class CustomerService {
+public class CustomerService implements CustomerReferenceLookup {
     private final CustomerRepository repository;
     private final CustomerCodeGenerator codeGenerator;
     private final RecipientRegistrationService recipientRegistrationService;
@@ -28,12 +28,21 @@ public class CustomerService {
         int safeSize = Math.min(Math.max(requestedSize, 1), 50);
         var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.ASC, "shippingName"));
         var normalizedQuery = query == null || query.isBlank() ? null : query.trim().toLowerCase(java.util.Locale.ROOT);
-        return CustomerPageResponse.from(repository.search(normalizedQuery, active, pageable));
+        var result = normalizedQuery == null
+                ? (active == null ? repository.findAll(pageable) : repository.findAllByActive(active, pageable))
+                : repository.search(normalizedQuery, active, pageable);
+        return CustomerPageResponse.from(result);
     }
 
     @Transactional(readOnly = true)
     public CustomerResponse get(UUID id) {
         return CustomerResponse.from(find(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allExist(Set<UUID> ids) {
+        return ids.isEmpty() || repository.countByIdIn(ids) == ids.size();
     }
 
     @Transactional

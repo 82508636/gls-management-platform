@@ -39,6 +39,21 @@ class VatValidationServiceTest {
     }
 
     @Test
+    void mapsAndSeparatesPortugueseRegistrationDetails() {
+        when(gateway.validate("PT", "500498601")).thenReturn(new VatValidationGateway.Result(
+                true, " CP - Comboios de Portugal, E.P.E. ",
+                "CALÇADA DO DUQUE, 20\n1249-109 LISBOA", null, null, null));
+
+        var result = service.validate(new VatValidationRequest(
+                "PT", "500498601", VatValidationSubjectType.COMPANY));
+
+        assertThat(result.registeredName()).isEqualTo("CP - Comboios de Portugal, E.P.E.");
+        assertThat(result.registeredAddress()).isEqualTo("CALÇADA DO DUQUE, 20");
+        assertThat(result.registeredPostalCode()).isEqualTo("1249-109");
+        assertThat(result.registeredLocality()).isEqualTo("LISBOA");
+    }
+
+    @Test
     void mapsANegativeViesResultWithoutClaimingTheNifDoesNotExist() {
         when(gateway.validate("PT", "500000000"))
                 .thenReturn(new VatValidationGateway.Result(false));

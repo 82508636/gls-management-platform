@@ -7,6 +7,10 @@ public record VatValidationResponse(
         String vatNumber,
         boolean formatValid,
         VatValidationStatus viesStatus,
+        String registeredName,
+        String registeredAddress,
+        String registeredPostalCode,
+        String registeredLocality,
         OffsetDateTime checkedAt
 ) {
 }

@@ -79,12 +79,12 @@ class CustomerServiceTest {
     @Test
     void limitsCustomerPagesToFiftyItems() {
         Pageable expectedPage = PageRequest.of(0, 50, org.springframework.data.domain.Sort.by("shippingName").ascending());
-        when(repository.search(null, null, expectedPage)).thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
+        when(repository.findAll(expectedPage)).thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
 
         var result = service.list(0, 200, "  ", null);
 
         assertThat(result.content()).isEmpty();
-        verify(repository).search(null, null, expectedPage);
+        verify(repository).findAll(expectedPage);
     }
 
     @Test
@@ -124,6 +124,18 @@ class CustomerServiceTest {
         service.list(2, 20, "  Norte Digital  ", true);
 
         verify(repository).search("norte digital", true, expectedPage);
+    }
+
+    @Test
+    void usesATypedQueryWhenOnlyTheActiveFilterIsPresent() {
+        Pageable expectedPage = PageRequest.of(0, 25, org.springframework.data.domain.Sort.by("shippingName").ascending());
+        when(repository.findAllByActive(true, expectedPage))
+                .thenReturn(new PageImpl<>(java.util.List.of(), expectedPage, 0));
+
+        service.list(0, 25, null, true);
+
+        verify(repository).findAllByActive(true, expectedPage);
+        verify(repository, never()).search(any(), any(), any());
     }
 
     private static CustomerRequest request(String shippingName, String agency, String vatNumber) {
