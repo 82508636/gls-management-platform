@@ -3,6 +3,7 @@
 .vscode/
 backend/target/
 services/**/target/
+libs/**/target/
 tools/**/target/
 frontend/node_modules/
 frontend/dist/

@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: catalog-service
+  datasource:
+    url: ${CATALOG_DATABASE_URL:jdbc:postgresql://localhost:5437/catalog}
+    username: ${CATALOG_DATABASE_USERNAME:catalog}
+    password: ${CATALOG_DATABASE_PASSWORD:catalog_local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/ltft}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8180/realms/ltft/protocol/openid-connect/certs}
+
+server:
+  port: ${CATALOG_SERVICE_PORT:8085}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+ltft:
+  security:
+    identity:
+      base-url: ${IDENTITY_SERVICE_URL:http://localhost:8084}
+  integrations:
+    customer:
+      base-url: ${CUSTOMER_SERVICE_URL:http://localhost:8082}
+      connect-timeout: ${CUSTOMER_SERVICE_CONNECT_TIMEOUT:2s}
+      read-timeout: ${CUSTOMER_SERVICE_READ_TIMEOUT:5s}

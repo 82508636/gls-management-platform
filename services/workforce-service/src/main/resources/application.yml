@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: workforce-service
+  datasource:
+    url: ${WORKFORCE_DATABASE_URL:jdbc:postgresql://localhost:5435/workforce}
+    username: ${WORKFORCE_DATABASE_USERNAME:workforce}
+    password: ${WORKFORCE_DATABASE_PASSWORD:workforce_local}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/ltft}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8180/realms/ltft/protocol/openid-connect/certs}
+
+server:
+  port: ${WORKFORCE_SERVICE_PORT:8083}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+ltft:
+  security:
+    identity:
+      base-url: ${IDENTITY_SERVICE_URL:http://localhost:8084}
