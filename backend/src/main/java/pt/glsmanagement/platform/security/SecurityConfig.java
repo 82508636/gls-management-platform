@@ -45,6 +45,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.HEAD, "/api/pricing/**").hasAnyRole("ADMIN", "ACCOUNTING")
                         .requestMatchers(HttpMethod.POST, "/api/pricing/simulations").hasAnyRole("ADMIN", "ACCOUNTING")
                         .requestMatchers("/api/pricing/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/operational-services", "/api/operational-services/**",
+                                "/api/service-groups", "/api/service-groups/**", "/api/billing/zones", "/api/billing/zones/**")
+                                .hasAnyRole("ADMIN", "OPERATOR", "ACCOUNTING", "FRONT_DESK")
+                        .requestMatchers(HttpMethod.HEAD, "/api/operational-services", "/api/operational-services/**",
+                                "/api/service-groups", "/api/service-groups/**", "/api/billing/zones", "/api/billing/zones/**")
+                                .hasAnyRole("ADMIN", "OPERATOR", "ACCOUNTING", "FRONT_DESK")
+                        .requestMatchers("/api/operational-services", "/api/operational-services/**",
+                                "/api/service-groups", "/api/service-groups/**",
+                                "/api/billing/zones", "/api/billing/zones/**")
+                                .hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/shipments", "/api/shipments/**").hasAnyRole("ADMIN", "OPERATOR", "ACCOUNTING", "FRONT_DESK")
                         .requestMatchers(HttpMethod.HEAD, "/api/shipments", "/api/shipments/**").hasAnyRole("ADMIN", "OPERATOR", "ACCOUNTING", "FRONT_DESK")
                         .requestMatchers(HttpMethod.POST, "/api/shipments").hasAnyRole("ADMIN", "OPERATOR", "FRONT_DESK")
