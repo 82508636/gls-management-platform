@@ -1,5 +1,10 @@
 # LTFT Comand Center — Handoff de estabilização para Claude
 
+> **Documento histórico.** Este handoff descreve o estado e os problemas observados antes da extração dos
+> microserviços e das correções posteriores. Não deve ser usado como estado atual nem como especificação do VIES.
+> Consulte [`IMPLEMENTATION_STATUS.md`](IMPLEMENTATION_STATUS.md), [`MICROSERVICES.md`](MICROSERVICES.md) e
+> [`vies-integration.md`](vies-integration.md) para a implementação vigente.
+
 ## 1. Objetivo deste documento
 
 Este documento descreve o estado atual do **LTFT Comand Center**, os testes já executados, os defeitos encontrados e o trabalho recomendado antes de iniciar novas funcionalidades.

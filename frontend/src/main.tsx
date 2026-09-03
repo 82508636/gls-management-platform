@@ -8,6 +8,7 @@ import { CustomerFormFields, type VatValidationRequest, type VatValidationResult
 import { CollaboratorCreatePage, CollaboratorsPage, PickupPointsPage, RecipientsPage, SuppliersStandbyPage } from './EntitiesPages'
 import { type AuditedReference, ReferenceManagementPage } from './CollaboratorManagementPages'
 import { PricingPlansPage } from './PricingPages'
+import { BillingZonesPage, OperationalServiceEditorPage, OperationalServicesPage, ServiceGroupsPage } from './OperationalServicesPages'
 import ltftLogoUrl from './assets/ltft-logo.jpg'
 import './styles.css'
 
@@ -16,6 +17,8 @@ type CustomerPage = { content: Customer[]; page: number; size: number; totalElem
 type ServiceStatus = 'PENDING' | 'PAID' | 'ALL'
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL ?? 'http://localhost:8082/api'
+const workforceApiUrl = import.meta.env.VITE_WORKFORCE_API_URL ?? 'http://localhost:8083/api'
 const GENERIC_LOAD_ERROR = 'Não foi possível carregar a informação. Tente novamente.'
 const GENERIC_SAVE_ERROR = 'Não foi possível guardar. Tente novamente.'
 const emptyForm: CustomerForm = { customerCode:'', abbreviation:'', shippingName:'', agency:'LTFT01', address:'', postalCode:'', locality:'', country:'PT', contactEmail:'', mobile:'', phone:'', billingCountry:'PT', vatNumber:'', billingLegalName:'', billingAddress:'', billingPostalCode:'', billingLocality:'', accountCode:'', billingReference:'', customerType:'COMPANY', responsibleName:'', billingEmail:'', defaultDocument:'INVOICE', exchangeRate:null, currency:'EUR', invoiceByPost:false, documentsByEmail:true, active:false }
@@ -83,7 +86,7 @@ function Header({ auth, path }: { auth: AuthSession; path: string }) {
               <button className={isCurrentPage('/entidades/fornecedores') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/fornecedores') ? 'page' : undefined} onClick={() => goToPage('/entidades/fornecedores')}>Fornecedores <small>Stand by</small></button>
               {auth.roles.includes('ADMIN') && <button className={isCurrentPage('/entidades/colaboradores') ? 'is-active' : ''} aria-current={isCurrentPage('/entidades/colaboradores') ? 'page' : undefined} onClick={() => goToPage('/entidades/colaboradores')}>Colaboradores</button>}
             </div>
-            {canViewPricing && <><p className="drawer-category-label">Configuração comercial</p><button className={`drawer-page-link${isCurrentPage('/configuracao/tabelas-precos') ? ' is-active' : ''}`} aria-current={isCurrentPage('/configuracao/tabelas-precos') ? 'page' : undefined} onClick={() => goToPage('/configuracao/tabelas-precos')}>Tabelas de preços</button></>}
+            {canViewEntities && <><p className="drawer-category-label">Configuração comercial</p><button className={`drawer-page-link${isCurrentPage('/configuracao/servicos') ? ' is-active' : ''}`} aria-current={isCurrentPage('/configuracao/servicos') ? 'page' : undefined} onClick={() => goToPage('/configuracao/servicos')}>Serviços</button><button className={`drawer-page-link${isCurrentPage('/billing/zones') ? ' is-active' : ''}`} aria-current={isCurrentPage('/billing/zones') ? 'page' : undefined} onClick={() => goToPage('/billing/zones')}>Zonas de faturação</button>{canViewPricing && <button className={`drawer-page-link${isCurrentPage('/configuracao/tabelas-precos') ? ' is-active' : ''}`} aria-current={isCurrentPage('/configuracao/tabelas-precos') ? 'page' : undefined} onClick={() => goToPage('/configuracao/tabelas-precos')}>Tabelas de preços</button>}</>}
             {auth.roles.includes('ADMIN') && <><p className="drawer-category-label">Administração</p><button className={`drawer-page-link${isCurrentPage('/admin/utilizadores') ? ' is-active' : ''}`} aria-current={isCurrentPage('/admin/utilizadores') ? 'page' : undefined} onClick={() => goToPage('/admin/utilizadores')}>Utilizadores</button></>}
           </div>
         </nav>
@@ -197,7 +200,7 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
   async function save(event: FormEvent) {
     event.preventDefault(); setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/customers${editingId ? `/${editingId}` : ''}`, { method: editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      const response = await auth.fetch(`${customerApiUrl}/customers${editingId ? `/${editingId}` : ''}`, { method: editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
       if (!response.ok) { setError(GENERIC_SAVE_ERROR); return }
       closeForm(); await loadPage(editingId ? page : 0)
     } catch {
@@ -210,7 +213,7 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
     if (!window.confirm(`Pretende ${action} o cliente ${customer.shippingName}?`)) return
     setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/customers/${encodeURIComponent(customer.id)}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !customer.active }) })
+      const response = await auth.fetch(`${customerApiUrl}/customers/${encodeURIComponent(customer.id)}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !customer.active }) })
       if (!response.ok) throw new Error('Customer status update failed')
       await loadPage(page)
     } catch { setError('Não foi possível alterar o estado do cliente. Tente novamente.') }
@@ -220,19 +223,31 @@ function CustomersPage({ customers, loadCustomers, auth }: { customers: Customer
     if (!window.confirm(`Pretende eliminar definitivamente o cliente ${customer.shippingName}?`)) return
     setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/customers/${encodeURIComponent(customer.id)}`, { method: 'DELETE' })
+      const response = await auth.fetch(`${customerApiUrl}/customers/${encodeURIComponent(customer.id)}`, { method: 'DELETE' })
       if (!response.ok) throw new Error('Customer deletion failed')
       await loadPage(page)
     } catch { setError('Não foi possível eliminar o cliente. Tente novamente.') }
   }
 
   async function validateVat(request: VatValidationRequest): Promise<VatValidationResult> {
-    const response = await auth.fetch(`${apiUrl}/vat-validations`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    })
-    if (!response.ok) throw new Error('VAT validation request failed')
+    let response: Response
+    try {
+      response = await auth.fetch(`${customerApiUrl}/vat-validations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        signal: AbortSignal.timeout(20_000),
+      })
+    } catch (exception) {
+      if (exception instanceof DOMException && exception.name === 'TimeoutError') {
+        throw new Error('O VIES demorou demasiado a responder. Tente novamente dentro de alguns instantes.')
+      }
+      throw new Error('Não foi possível contactar o serviço de validação de NIF.')
+    }
+    if (response.status === 401) throw new Error('A sessão deixou de ser válida. Termine a sessão e volte a entrar.')
+    if (response.status === 403) throw new Error('O seu perfil não tem permissão para validar NIFs.')
+    if (response.status >= 500) throw new Error('O serviço de validação está temporariamente indisponível. Tente novamente.')
+    if (!response.ok) throw new Error(`Não foi possível validar o NIF (HTTP ${response.status}).`)
     return response.json() as Promise<VatValidationResult>
   }
 
@@ -266,8 +281,8 @@ function App({ auth }: { auth: AuthSession }) {
     void (async () => {
       try {
         const [profilesResponse, categoriesResponse] = await Promise.all([
-          auth.fetch(`${apiUrl}/reference-data/account-profiles`),
-          auth.fetch(`${apiUrl}/reference-data/professional-categories`),
+          auth.fetch(`${workforceApiUrl}/reference-data/account-profiles`),
+          auth.fetch(`${workforceApiUrl}/reference-data/professional-categories`),
         ])
         if (!profilesResponse.ok || !categoriesResponse.ok) throw new Error('reference load failed')
         setAccountProfiles(await profilesResponse.json() as AuditedReference[])
@@ -287,7 +302,7 @@ function App({ auth }: { auth: AuthSession }) {
       const parameters = new URLSearchParams({ page: String(page), size: '50' })
       if (query.trim()) parameters.set('query', query.trim())
       if (active !== null) parameters.set('active', String(active))
-      const response = await auth.fetch(`${apiUrl}/customers?${parameters}`, { signal: controller.signal })
+      const response = await auth.fetch(`${customerApiUrl}/customers?${parameters}`, { signal: controller.signal })
       if (!response.ok) throw new Error(`Customer request failed with status ${response.status}`)
       const result = await response.json() as CustomerPage
       if (customerRequest.current === controller) setApiCustomers(result.content)
@@ -311,11 +326,19 @@ function App({ auth }: { auth: AuthSession }) {
   const isAccountProfiles = path === '/admin/perfis'
   const isProfessionalCategories = path === '/entidades/colaboradores/categorias-profissionais'
   const isPricingPlans = path === '/configuracao/tabelas-precos'
+  const isOperationalServices = path === '/configuracao/servicos'
+  const operationalServiceMatch = path.match(/^\/configuracao\/servicos\/([^/]+)\/edit$/)
+  const isOperationalServiceCreate = path === '/configuracao/servicos/create'
+  const isServiceGroups = path === '/configuracao/grupos-servicos'
+  const isBillingZones = path === '/billing/zones'
   const isCollaboratorArea = isCollaborators || isCollaboratorCreate || isAccountProfiles || isProfessionalCategories
   const isEntityPage = isRecipients || isPickupPoints || isSuppliers || isCollaboratorArea
   const entityContent = isRecipients ? <RecipientsPage auth={auth} /> : isPickupPoints ? <PickupPointsPage auth={auth} /> : isSuppliers ? <SuppliersStandbyPage /> : isAccountProfiles && auth.roles.includes('ADMIN') ? <ReferenceManagementPage auth={auth} endpoint="account-profiles" title="Gerir perfis de conta" trail={['Administração','Perfis de conta']} description="Catálogo de perfis disponível no registo de colaboradores. As permissões efetivas continuam a ser geridas no Keycloak." createTitle="Novo perfil" editTitle="Editar perfil" idHint="Ex.: DRIVER" items={accountProfiles} onChange={setAccountProfiles} onBack={() => navigate('/entidades/colaboradores/create')}/> : isProfessionalCategories && auth.roles.includes('ADMIN') ? <ReferenceManagementPage auth={auth} endpoint="professional-categories" title="Gerir categorias profissionais" trail={['Entidades','Colaboradores','Categorias profissionais']} description="Mantém as categorias profissionais sem eliminar o respetivo histórico de auditoria." createTitle="Nova categoria profissional" editTitle="Editar categoria profissional" idHint="Ex.: 7" items={professionalCategories} onChange={setProfessionalCategories} onBack={() => navigate('/entidades/colaboradores/create')}/> : isCollaboratorCreate && auth.roles.includes('ADMIN') ? <CollaboratorCreatePage accountProfiles={accountProfiles} professionalCategories={professionalCategories} onManageProfiles={() => navigate('/admin/perfis')} onManageCategories={() => navigate('/entidades/colaboradores/categorias-profissionais')}/> : isCollaborators && auth.roles.includes('ADMIN') ? <CollaboratorsPage onCreate={() => navigate('/entidades/colaboradores/create')} /> : null
   const canViewPricing = auth.roles.some(role => role === 'ADMIN' || role === 'ACCOUNTING')
-  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isPricingPlans && canViewPricing ? <PricingPlansPage auth={auth}/> : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) || (isPricingPlans && !canViewPricing) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} auth={auth} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
+  const isCommercialCatalog = isOperationalServices || isOperationalServiceCreate || Boolean(operationalServiceMatch) || isServiceGroups || isBillingZones
+  const commercialContent = isOperationalServices ? <OperationalServicesPage auth={auth}/> : isOperationalServiceCreate ? <OperationalServiceEditorPage auth={auth}/> : operationalServiceMatch ? <OperationalServiceEditorPage auth={auth} id={decodeURIComponent(operationalServiceMatch[1])}/> : isServiceGroups ? <ServiceGroupsPage auth={auth}/> : isBillingZones ? <BillingZonesPage auth={auth}/> : null
+  const commercialWritePage = isOperationalServiceCreate
+  return <div className="app-shell"><Header auth={auth} path={path} />{isAdminUsers && auth.roles.includes('ADMIN') ? <AdminUsersPage auth={auth} onBack={() => navigate('/clientes')} /> : isPricingPlans && canViewPricing ? <PricingPlansPage auth={auth}/> : isCommercialCatalog && canUseCustomerArea && (!commercialWritePage || auth.roles.includes('ADMIN')) ? commercialContent : isAdminUsers || !canUseCustomerArea || (match && !canUseCustomerAccount) || (isCollaboratorArea && !auth.roles.includes('ADMIN')) || (isPricingPlans && !canViewPricing) || (isCommercialCatalog && commercialWritePage && !auth.roles.includes('ADMIN')) ? <main><section className="panel access-denied"><h1>Acesso não autorizado</h1><p>Não tem permissões para consultar esta área.</p></section></main> : isEntityPage ? entityContent : match && customer ? <AccountPage customer={customer} auth={auth} onBack={() => navigate('/clientes')} /> : match ? <main><button className="back-link" onClick={() => navigate('/clientes')}>← Voltar aos clientes</button><p className="empty">Cliente não encontrado.</p></main> : <CustomersPage customers={apiCustomers} loadCustomers={loadCustomers} auth={auth} />}</div>
 }
 
 function formatCurrency(value: number) { return new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(value) }

@@ -19,7 +19,7 @@ recolhas/envios.
 ## Envios
 
 Os envios são persistidos localmente sem chamar a API GLS. A criação associa um cliente e um destinatário,
-usa uma rota Business Parcel ou Express Parcel da tabela de preços e conserva o preço, datas, pesos,
+usa uma rota autónoma da tabela de preços e conserva o preço, a designação da rota, datas, pesos,
 estado logístico, estado de pagamento e auditoria.
 
 Endpoints:
