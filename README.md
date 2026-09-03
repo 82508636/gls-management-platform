@@ -108,8 +108,21 @@ O modelo, as regras e os endpoints estão documentados em [`docs/PRICING.md`](do
 
 ## Validação
 
-- Backend: `cd backend && mvn test`
+- Reactor completo (recomendado em Windows): `.\scripts\mvn-docker.cmd clean test`
+- Backend legado apenas: `.\scripts\mvn-docker.cmd -f backend/pom.xml clean test`
 - Frontend: `cd frontend && npm run build`
+
+O runner Maven usa Maven 3.9.11 e Java 21 dentro de Docker, reutiliza o volume
+`ltft-maven-cache` e aceita os mesmos goals e opções do comando `mvn`. Desta forma,
+o build não depende de uma instalação Maven no Windows e evita falhas do `ZipFS`
+do JDK observadas em ambientes Windows isolados. É necessário ter o Docker Desktop
+ativo. O goal `clean` é recomendado para não reutilizar classes `target` produzidas
+no Windows quando o build corre no contentor Linux. Por exemplo, para produzir os
+artefactos sem executar testes:
+
+```powershell
+.\scripts\mvn-docker.cmd clean -DskipTests package
+```
 
 ### Testes E2E de segurança
 

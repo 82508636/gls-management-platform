@@ -10,6 +10,7 @@ frontend/dist/
 *.tsbuildinfo
 work/
 .m2/
+.m2-private/
 .tools/
 .direct-jars/
 .test-deps-exploded/

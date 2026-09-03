@@ -31,6 +31,9 @@ Atualizado em 3 de setembro de 2026.
 - Login real no Keycloak concluído e sessão OIDC recuperada pelo frontend.
 - Chamadas autenticadas com perfil `ADMIN` a Customer, Pickup, Workforce, Identity, Catalog e Pricing devolveram `200`.
 - A página de Clientes e a gestão JML carregaram dados reais depois da autenticação.
+- Validação VIES e preenchimento dos dados fiscais confirmados no browser.
+- Build Maven reproduzível em Java 21 através de `scripts/mvn-docker.cmd`, sem dependência de Maven instalado no Windows.
+- `clean test` do reactor Maven confirmado com `BUILD SUCCESS` nos 11 módulos em 3 de setembro de 2026.
 
 ## Organização antes de versionar
 
