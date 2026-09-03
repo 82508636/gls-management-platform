@@ -11,7 +11,6 @@ public record PricingQuote(
         String routeCode,
         String routeDesignation,
         String destinationCountry,
-        String serviceCode,
         BigDecimal actualWeightKg,
         BigDecimal volumetricWeightKg,
         BigDecimal chargeableWeightKg,

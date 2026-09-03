@@ -16,6 +16,10 @@ class ShipmentExceptionHandler {
         if (exception.reason() == ShipmentException.Reason.NOT_FOUND) {
             return response(HttpStatus.NOT_FOUND, "Não foi possível encontrar os dados necessários ao envio.");
         }
+        if (exception.reason() == ShipmentException.Reason.PRICING_UNAVAILABLE) {
+            return response(HttpStatus.SERVICE_UNAVAILABLE,
+                    "O serviço de preços está temporariamente indisponível.");
+        }
         return response(HttpStatus.BAD_REQUEST, "Não foi possível validar os dados do envio.");
     }
 

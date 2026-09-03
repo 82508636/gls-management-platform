@@ -91,8 +91,8 @@ class ShipmentServiceTest {
     @Test
     void rejectsRecipientOutsideTheSelectedRouteCountry() {
         var request = request(null, PaymentStatus.PENDING);
-        var spanishQuote = new PricingQuote(planId, "4W-BE", 1, routeId, "BUS_ES_48H", "Espanha 48h", "ES",
-                "BUSINESS_PARCEL", new BigDecimal("4.000"), BigDecimal.ZERO, new BigDecimal("4.000"),
+        var spanishQuote = new PricingQuote(planId, "LTFT-BASE", 1, routeId, "ROTA_ES_48H", "Espanha 48h", "ES",
+                new BigDecimal("4.000"), BigDecimal.ZERO, new BigDecimal("4.000"),
                 new BigDecimal("6.89"), new BigDecimal("0.48"), new BigDecimal("7.37"),
                 new BigDecimal("1.70"), new BigDecimal("9.07"), "EUR");
         when(customers.customer(customerId)).thenReturn(new Shipment.CustomerSnapshot("100001", "Cliente Norte"));
@@ -121,7 +121,7 @@ class ShipmentServiceTest {
     }
 
     private ShipmentRequest request(LocalDate dueDate, PaymentStatus paymentStatus) {
-        return new ShipmentRequest(customerId, planId, "BUS_PT_24H", LocalDate.of(2026, 8, 20), dueDate, 1,
+        return new ShipmentRequest(customerId, planId, "ROTA_PT_24H", LocalDate.of(2026, 8, 20), dueDate, 1,
                 new BigDecimal("4.000"), null, null, null,
                 new RecipientRegistration("LIS-01", "Destino Lisboa", "Ana", "Avenida da República, 45",
                         "1050-187", "Lisboa", "PT", "destino@example.test", "211000001", null),
@@ -129,8 +129,8 @@ class ShipmentServiceTest {
     }
 
     private PricingQuote quote() {
-        return new PricingQuote(planId, "4W-BE", 1, routeId, "BUS_PT_24H", "Portugal 24h", "PT",
-                "BUSINESS_PARCEL", new BigDecimal("4.000"), new BigDecimal("0.000"),
+        return new PricingQuote(planId, "LTFT-BASE", 1, routeId, "ROTA_PT_24H", "Portugal 24h", "PT",
+                new BigDecimal("4.000"), new BigDecimal("0.000"),
                 new BigDecimal("4.000"), new BigDecimal("4.56"), new BigDecimal("0.32"),
                 new BigDecimal("4.88"), new BigDecimal("1.12"), new BigDecimal("6.00"), "EUR");
     }

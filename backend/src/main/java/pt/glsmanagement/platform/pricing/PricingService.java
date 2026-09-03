@@ -53,7 +53,7 @@ class PricingService implements PricingQuoteService {
         var code = normalizeCode(request.code());
         if (routes.existsByPlanIdAndCodeIgnoreCase(planId, code)) throw PricingException.duplicate();
         validateRoute(request.maxPieceWeightKg(), request.additionalStepPrice(), request.brackets());
-        var route = PricingRoute.create(plan, request.serviceCode(), code, normalizeText(request.designation()),
+        var route = PricingRoute.create(plan, code, normalizeText(request.designation()),
                 normalizeCountry(request.destinationCountry()), normalizeText(request.deliveryCommitment()),
                 request.volumetricFactor(), request.maxPieceWeightKg(), request.maxCombinedDimensionsCm(),
                 request.additionalStepKg(), request.additionalStepPrice(), request.enabled(), request.sortOrder());
@@ -65,13 +65,29 @@ class PricingService implements PricingQuoteService {
     @Transactional
     RouteResponse updateRoute(UUID planId, UUID routeId, RouteUpdateRequest request, String actor) {
         var route = routes.findByIdAndPlanId(routeId, planId).orElseThrow(PricingException::notFound);
+        var code = normalizeCode(request.code());
+        routes.findByPlanIdAndCodeIgnoreCase(planId, code)
+                .filter(existing -> !existing.id().equals(routeId))
+                .ifPresent(existing -> { throw PricingException.duplicate(); });
         validateRoute(request.maxPieceWeightKg(), request.additionalStepPrice(), request.brackets());
-        route.update(normalizeText(request.designation()), normalizeCountry(request.destinationCountry()),
+        route.update(code, normalizeText(request.designation()), normalizeCountry(request.destinationCountry()),
                 normalizeText(request.deliveryCommitment()), request.volumetricFactor(), request.maxPieceWeightKg(),
                 request.maxCombinedDimensionsCm(), request.additionalStepKg(), request.additionalStepPrice(),
-                request.enabled(), request.sortOrder(), sortedBrackets(request.brackets()));
+                request.enabled(), request.sortOrder());
+        route.clearBrackets();
+        routes.flush();
+        route.replaceBrackets(sortedBrackets(request.brackets()));
         route.plan().touch(actor);
         return RouteResponse.from(route);
+    }
+
+    @Transactional
+    void deleteRoute(UUID planId, UUID routeId, String actor) {
+        var route = routes.findByIdAndPlanId(routeId, planId).orElseThrow(PricingException::notFound);
+        var plan = route.plan();
+        plan.requireDraft();
+        plan.routes().remove(route);
+        plan.touch(actor);
     }
 
     @Transactional
@@ -129,7 +145,7 @@ class PricingService implements PricingQuoteService {
         var route = routes.findByPlanIdAndCodeIgnoreCase(request.planId(), normalizeCode(request.routeCode()))
                 .orElseThrow(PricingException::notFound);
         return new PricingQuote(simulation.planId(), simulation.planCode(), simulation.planVersion(), route.id(),
-                simulation.routeCode(), simulation.routeDesignation(), route.destinationCountry(), route.serviceCode().name(),
+                simulation.routeCode(), simulation.routeDesignation(), route.destinationCountry(),
                 simulation.actualWeightKg(), simulation.volumetricWeightKg(), simulation.chargeableWeightKg(),
                 simulation.basePrice(), simulation.fuelSurcharge(), simulation.subtotal(), simulation.vat(),
                 simulation.total(), simulation.currency());
@@ -149,10 +165,8 @@ class PricingService implements PricingQuoteService {
     }
 
     private static void validateActivation(PricingPlan plan) {
-        for (var service : PricingRoute.ServiceCode.values()) {
-            var valid = plan.routes().stream().anyMatch(route -> route.serviceCode() == service && route.enabled() && !route.brackets().isEmpty());
-            if (!valid) throw PricingException.invalidConfiguration();
-        }
+        var valid = plan.routes().stream().anyMatch(route -> route.enabled() && !route.brackets().isEmpty());
+        if (!valid) throw PricingException.invalidConfiguration();
     }
 
     private static void validateRoute(BigDecimal maxWeight, BigDecimal additionalPrice, List<BracketRequest> brackets) {

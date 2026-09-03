@@ -7,11 +7,8 @@ import java.util.*;
 @Entity
 @Table(name = "pricing_routes")
 class PricingRoute {
-    enum ServiceCode { BUSINESS_PARCEL, EXPRESS_PARCEL }
-
     @Id private UUID id;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "pricing_plan_id") private PricingPlan plan;
-    @Enumerated(EnumType.STRING) @Column(name = "service_code", nullable = false, length = 30) private ServiceCode serviceCode;
     @Column(nullable = false, length = 60) private String code;
     @Column(nullable = false, length = 160) private String designation;
     @Column(name = "destination_country", nullable = false, length = 2) private String destinationCountry;
@@ -29,28 +26,29 @@ class PricingRoute {
 
     protected PricingRoute() {}
 
-    static PricingRoute create(PricingPlan plan, ServiceCode serviceCode, String code, String designation,
+    static PricingRoute create(PricingPlan plan, String code, String designation,
                                String destinationCountry, String commitment, BigDecimal volumetricFactor,
                                BigDecimal maxPieceWeight, BigDecimal maxDimensions, BigDecimal additionalStep,
                                BigDecimal additionalPrice, boolean enabled, int sortOrder) {
         var route = new PricingRoute();
         route.id = UUID.randomUUID();
         route.plan = plan;
-        route.serviceCode = serviceCode;
         route.code = code;
         route.apply(designation, destinationCountry, commitment, volumetricFactor, maxPieceWeight,
                 maxDimensions, additionalStep, additionalPrice, enabled, sortOrder);
         return route;
     }
 
-    void update(String designation, String destinationCountry, String commitment, BigDecimal volumetricFactor,
+    void update(String code, String designation, String destinationCountry, String commitment, BigDecimal volumetricFactor,
                 BigDecimal maxPieceWeight, BigDecimal maxDimensions, BigDecimal additionalStep,
-                BigDecimal additionalPrice, boolean enabled, int sortOrder, List<PricingDtos.BracketRequest> values) {
+                BigDecimal additionalPrice, boolean enabled, int sortOrder) {
         plan.requireDraft();
+        this.code = code;
         apply(designation, destinationCountry, commitment, volumetricFactor, maxPieceWeight,
                 maxDimensions, additionalStep, additionalPrice, enabled, sortOrder);
-        replaceBrackets(values);
     }
+
+    void clearBrackets() { brackets.clear(); }
 
     void replaceBrackets(List<PricingDtos.BracketRequest> values) {
         brackets.clear();
@@ -75,7 +73,6 @@ class PricingRoute {
 
     UUID id() { return id; }
     PricingPlan plan() { return plan; }
-    ServiceCode serviceCode() { return serviceCode; }
     String code() { return code; }
     String designation() { return designation; }
     String destinationCountry() { return destinationCountry; }

@@ -32,7 +32,6 @@ final class PricingDtos {
             @NotNull @DecimalMin("0") BigDecimal price) {}
 
     record RouteCreateRequest(
-            @NotNull PricingRoute.ServiceCode serviceCode,
             @NotBlank @Size(max = 60) String code,
             @NotBlank @Size(max = 160) String designation,
             @NotBlank @Pattern(regexp = "[A-Za-z]{2}") String destinationCountry,
@@ -47,6 +46,7 @@ final class PricingDtos {
             @NotEmpty List<@Valid BracketRequest> brackets) {}
 
     record RouteUpdateRequest(
+            @NotBlank @Size(max = 60) String code,
             @NotBlank @Size(max = 160) String designation,
             @NotBlank @Pattern(regexp = "[A-Za-z]{2}") String destinationCountry,
             @NotBlank @Size(max = 40) String deliveryCommitment,
@@ -77,12 +77,12 @@ final class PricingDtos {
     }
 
     record RouteResponse(
-            UUID id, PricingRoute.ServiceCode serviceCode, String code, String designation, String destinationCountry,
+            UUID id, String code, String designation, String destinationCountry,
             String deliveryCommitment, BigDecimal volumetricFactor, BigDecimal maxPieceWeightKg,
             BigDecimal maxCombinedDimensionsCm, BigDecimal additionalStepKg, BigDecimal additionalStepPrice,
             boolean enabled, int sortOrder, List<BracketResponse> brackets) {
         static RouteResponse from(PricingRoute route) {
-            return new RouteResponse(route.id(), route.serviceCode(), route.code(), route.designation(),
+            return new RouteResponse(route.id(), route.code(), route.designation(),
                     route.destinationCountry(), route.deliveryCommitment(), route.volumetricFactor(),
                     route.maxPieceWeightKg(), route.maxCombinedDimensionsCm(), route.additionalStepKg(),
                     route.additionalStepPrice(), route.enabled(), route.sortOrder(),

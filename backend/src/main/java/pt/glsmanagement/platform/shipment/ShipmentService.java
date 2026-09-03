@@ -2,6 +2,7 @@ package pt.glsmanagement.platform.shipment;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pt.glsmanagement.platform.entity.RecipientRegistrationService;
@@ -19,7 +20,8 @@ class ShipmentService {
     private final PricingQuoteService pricing;
 
     ShipmentService(ShipmentRepository shipments, CustomerShipmentLookup customers,
-                    RecipientRegistrationService recipients, PricingQuoteService pricing) {
+                    RecipientRegistrationService recipients,
+                    @Qualifier("remotePricingQuoteService") PricingQuoteService pricing) {
         this.shipments = shipments;
         this.customers = customers;
         this.recipients = recipients;

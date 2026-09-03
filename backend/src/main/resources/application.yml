@@ -36,11 +36,17 @@ server:
 
 ltft:
   integrations:
+    pricing:
+      base-url: ${PRICING_SERVICE_URL:http://localhost:8086}
+      connect-timeout: ${PRICING_CONNECT_TIMEOUT:2s}
+      read-timeout: ${PRICING_READ_TIMEOUT:5s}
     vies:
       base-url: ${VIES_BASE_URL:https://ec.europa.eu/taxation_customs/vies/rest-api}
       connect-timeout: ${VIES_CONNECT_TIMEOUT:3s}
       read-timeout: ${VIES_READ_TIMEOUT:5s}
       max-concurrent-requests: ${VIES_MAX_CONCURRENT_REQUESTS:4}
+      max-attempts: ${VIES_MAX_ATTEMPTS:3}
+      retry-delay: ${VIES_RETRY_DELAY:250ms}
   identity:
     keycloak:
       base-url: ${KEYCLOAK_BASE_URL:http://localhost:8180}

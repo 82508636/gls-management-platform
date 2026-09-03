@@ -27,10 +27,9 @@ class Shipment {
     @Column(name = "pricing_plan_id", nullable = false) private UUID pricingPlanId;
     @Column(name = "pricing_plan_code", nullable = false, length = 40) private String pricingPlanCode;
     @Column(name = "pricing_plan_version", nullable = false) private int pricingPlanVersion;
-    @Column(name = "pricing_route_id", nullable = false) private UUID pricingRouteId;
+    @Column(name = "pricing_route_id") private UUID pricingRouteId;
     @Column(name = "route_code", nullable = false, length = 60) private String routeCode;
     @Column(name = "route_designation", nullable = false, length = 160) private String routeDesignation;
-    @Column(name = "service_code", nullable = false, length = 30) private String serviceCode;
     @Column(name = "shipment_date", nullable = false) private LocalDate shipmentDate;
     @Column(name = "due_date", nullable = false) private LocalDate dueDate;
     @Column(name = "parcel_count", nullable = false) private int parcelCount;
@@ -76,7 +75,6 @@ class Shipment {
         shipment.pricingRouteId = quote.routeId();
         shipment.routeCode = quote.routeCode();
         shipment.routeDesignation = quote.routeDesignation();
-        shipment.serviceCode = quote.serviceCode();
         shipment.shipmentDate = request.shipmentDate();
         shipment.dueDate = request.dueDate() == null ? request.shipmentDate().plusDays(30) : request.dueDate();
         shipment.parcelCount = request.parcelCount();
@@ -121,7 +119,6 @@ class Shipment {
     UUID pricingRouteId() { return pricingRouteId; }
     String routeCode() { return routeCode; }
     String routeDesignation() { return routeDesignation; }
-    String serviceCode() { return serviceCode; }
     LocalDate shipmentDate() { return shipmentDate; }
     LocalDate dueDate() { return dueDate; }
     int parcelCount() { return parcelCount; }
