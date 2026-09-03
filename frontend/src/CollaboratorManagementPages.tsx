@@ -2,7 +2,7 @@ import { FormEvent, useMemo, useState } from 'react'
 import { ContextualPageHeading } from './ContextualPageHeading'
 import type { AuthSession } from './auth'
 
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+const workforceApiUrl = import.meta.env.VITE_WORKFORCE_API_URL ?? 'http://localhost:8083/api'
 
 export type AuditedReference = {
   id: string
@@ -77,7 +77,7 @@ export function ReferenceManagementPage({ auth, createTitle, description, editTi
       return
     }
     try {
-      const response = await auth.fetch(`${apiUrl}/reference-data/${endpoint}${editingId ? `/${encodeURIComponent(editingId)}` : ''}`, {
+      const response = await auth.fetch(`${workforceApiUrl}/reference-data/${endpoint}${editingId ? `/${encodeURIComponent(editingId)}` : ''}`, {
         method: editingId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingId ? { designation: normalizedDesignation } : { id: normalizedId, designation: normalizedDesignation }),
@@ -95,7 +95,7 @@ export function ReferenceManagementPage({ auth, createTitle, description, editTi
   async function toggle(item: AuditedReference) {
     setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/reference-data/${endpoint}/${encodeURIComponent(item.id)}/status`, {
+      const response = await auth.fetch(`${workforceApiUrl}/reference-data/${endpoint}/${encodeURIComponent(item.id)}/status`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !item.active }),
       })
       if (!response.ok) throw new Error('status failed')

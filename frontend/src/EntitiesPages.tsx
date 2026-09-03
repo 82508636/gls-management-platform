@@ -4,6 +4,8 @@ import { ContextualPageHeading } from './ContextualPageHeading'
 import type { AuditedReference } from './CollaboratorManagementPages'
 
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+const pickupApiUrl = import.meta.env.VITE_PICKUP_API_URL ?? 'http://localhost:8081/api'
+const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL ?? 'http://localhost:8082/api'
 
 type PickupPoint = {
   id: string; code: string; designation: string
@@ -44,7 +46,7 @@ export function PickupPointsPage({ auth }: { auth: AuthSession }) {
   async function load(targetPage = 0) {
     setLoading(true)
     try {
-      const response = await auth.fetch(`${apiUrl}/pickup-points?page=${targetPage}&size=50`)
+      const response = await auth.fetch(`${pickupApiUrl}/pickup-points?page=${targetPage}&size=50`)
       if (!response.ok) throw new Error('load failed')
       const result = await response.json() as Page<PickupPoint>
       setPoints(result.content); setPage(result.page)
@@ -62,7 +64,7 @@ export function PickupPointsPage({ auth }: { auth: AuthSession }) {
   async function save(event: FormEvent) {
     event.preventDefault(); setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/pickup-points${editingId ? `/${editingId}` : ''}`, {
+      const response = await auth.fetch(`${pickupApiUrl}/pickup-points${editingId ? `/${editingId}` : ''}`, {
         method: editingId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form),
       })
       if (!response.ok) throw new Error('save failed')
@@ -72,7 +74,7 @@ export function PickupPointsPage({ auth }: { auth: AuthSession }) {
 
   async function changeStatus(point: PickupPoint) {
     try {
-      const response = await auth.fetch(`${apiUrl}/pickup-points/${point.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !point.active }) })
+      const response = await auth.fetch(`${pickupApiUrl}/pickup-points/${point.id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !point.active }) })
       if (!response.ok) throw new Error('status failed')
       await load(page)
     } catch { setError('Não foi possível alterar o estado do Ponto Pickup.') }
@@ -111,7 +113,7 @@ export function RecipientsPage({ auth }: { auth: AuthSession }) {
   const [recipients, setRecipients] = useState<Recipient[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  useEffect(() => { void (async () => { try { const response = await auth.fetch(`${apiUrl}/recipients?page=0&size=50`); if (!response.ok) throw new Error(); const page = await response.json() as Page<Recipient>; setRecipients(page.content) } catch { setError('Não foi possível carregar os destinatários.') } finally { setLoading(false) } })() }, [])
+  useEffect(() => { void (async () => { try { const response = await auth.fetch(`${customerApiUrl}/recipients?page=0&size=50`); if (!response.ok) throw new Error(); const page = await response.json() as Page<Recipient>; setRecipients(page.content) } catch { setError('Não foi possível carregar os destinatários.') } finally { setLoading(false) } })() }, [])
   return <main className="workspace-page entities-page"><div className="page-heading"><div><p className="eyebrow">Entidades</p><h1>Destinatários</h1><p>Registos criados automaticamente a partir dos clientes, recolhas e envios.</p></div><span className="info-chip">Sem criação manual</span></div><section className="panel list-panel">{error && <p className="error">{error}</p>}{loading ? <p>A carregar…</p> : recipients.length === 0 ? <div className="empty compact-empty"><strong>Ainda não existem destinatários.</strong><p>Quando for criado um cliente ou registada uma recolha ou envio, o destinatário será guardado automaticamente e ficará disponível aqui.</p></div> : <div className="table-wrap customer-table"><table><thead><tr><th>Código</th><th>Designação</th><th>Contacto</th><th>Morada</th><th>Última utilização</th></tr></thead><tbody>{recipients.map(recipient => <tr key={recipient.id}><td><strong className="customer-code">{recipient.code || '—'}</strong></td><td><strong>{recipient.designation}</strong><small>{recipient.contactName || 'Sem pessoa de contacto'}</small></td><td>{recipient.mobile || recipient.phone || '—'}<small>{recipient.email || 'Sem email'}</small></td><td>{recipient.address}<small>{recipient.postalCode} {recipient.locality} · {recipient.country}</small></td><td>{new Intl.DateTimeFormat('pt-PT').format(new Date(recipient.lastUsedAt))}</td></tr>)}</tbody></table></div>}</section></main>
 }
 
