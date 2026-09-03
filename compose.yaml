@@ -15,6 +15,102 @@ services:
       timeout: 5s
       retries: 10
 
+  pickup-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PICKUP_POSTGRES_DB:-pickup}
+      POSTGRES_USER: ${PICKUP_POSTGRES_USER:-pickup}
+      POSTGRES_PASSWORD: ${PICKUP_POSTGRES_PASSWORD:-pickup_local}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pickup-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  customer-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${CUSTOMER_POSTGRES_DB:-customer}
+      POSTGRES_USER: ${CUSTOMER_POSTGRES_USER:-customer}
+      POSTGRES_PASSWORD: ${CUSTOMER_POSTGRES_PASSWORD:-customer_local}
+    ports:
+      - "5434:5432"
+    volumes:
+      - customer-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  workforce-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${WORKFORCE_POSTGRES_DB:-workforce}
+      POSTGRES_USER: ${WORKFORCE_POSTGRES_USER:-workforce}
+      POSTGRES_PASSWORD: ${WORKFORCE_POSTGRES_PASSWORD:-workforce_local}
+    ports:
+      - "5435:5432"
+    volumes:
+      - workforce-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  identity-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${IDENTITY_POSTGRES_DB:-identity}
+      POSTGRES_USER: ${IDENTITY_POSTGRES_USER:-identity}
+      POSTGRES_PASSWORD: ${IDENTITY_POSTGRES_PASSWORD:-identity_local}
+    ports:
+      - "5436:5432"
+    volumes:
+      - identity-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  catalog-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${CATALOG_POSTGRES_DB:-catalog}
+      POSTGRES_USER: ${CATALOG_POSTGRES_USER:-catalog}
+      POSTGRES_PASSWORD: ${CATALOG_POSTGRES_PASSWORD:-catalog_local}
+    ports:
+      - "5437:5432"
+    volumes:
+      - catalog-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pricing-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${PRICING_POSTGRES_DB:-pricing}
+      POSTGRES_USER: ${PRICING_POSTGRES_USER:-pricing}
+      POSTGRES_PASSWORD: ${PRICING_POSTGRES_PASSWORD:-pricing_local}
+    ports:
+      - "5438:5432"
+    volumes:
+      - pricing-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.3.3
     command: start-dev --import-realm
@@ -33,6 +129,195 @@ services:
       timeout: 5s
       retries: 20
 
+  pickup-service:
+    build:
+      context: .
+      dockerfile: services/pickup-service/Dockerfile
+    environment:
+      PICKUP_DATABASE_URL: jdbc:postgresql://pickup-postgres:5432/pickup
+      PICKUP_DATABASE_USERNAME: ${PICKUP_POSTGRES_USER:-pickup}
+      PICKUP_DATABASE_PASSWORD: ${PICKUP_POSTGRES_PASSWORD:-pickup_local}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/ltft/protocol/openid-connect/certs
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      PICKUP_SERVICE_PORT: 8081
+      IDENTITY_SERVICE_URL: http://identity-service:8084
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/8081; printf 'GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\\\"status\\\":\\\"UP\\\"' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      pickup-postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+
+  customer-service:
+    build:
+      context: .
+      dockerfile: services/customer-service/Dockerfile
+    environment:
+      CUSTOMER_DATABASE_URL: jdbc:postgresql://customer-postgres:5432/customer
+      CUSTOMER_DATABASE_USERNAME: ${CUSTOMER_POSTGRES_USER:-customer}
+      CUSTOMER_DATABASE_PASSWORD: ${CUSTOMER_POSTGRES_PASSWORD:-customer_local}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/ltft/protocol/openid-connect/certs
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      CUSTOMER_SERVICE_PORT: 8082
+      IDENTITY_SERVICE_URL: http://identity-service:8084
+      VIES_BASE_URL: ${VIES_BASE_URL:-https://ec.europa.eu/taxation_customs/vies/rest-api}
+      VIES_CONNECT_TIMEOUT: ${VIES_CONNECT_TIMEOUT:-3s}
+      VIES_READ_TIMEOUT: ${VIES_READ_TIMEOUT:-5s}
+      VIES_MAX_CONCURRENT_REQUESTS: ${VIES_MAX_CONCURRENT_REQUESTS:-4}
+      VIES_MAX_ATTEMPTS: ${VIES_MAX_ATTEMPTS:-3}
+      VIES_RETRY_DELAY: ${VIES_RETRY_DELAY:-250ms}
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/8082; printf 'GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\\\"status\\\":\\\"UP\\\"' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      customer-postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+
+  workforce-service:
+    build:
+      context: .
+      dockerfile: services/workforce-service/Dockerfile
+    environment:
+      WORKFORCE_DATABASE_URL: jdbc:postgresql://workforce-postgres:5432/workforce
+      WORKFORCE_DATABASE_USERNAME: ${WORKFORCE_POSTGRES_USER:-workforce}
+      WORKFORCE_DATABASE_PASSWORD: ${WORKFORCE_POSTGRES_PASSWORD:-workforce_local}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/ltft/protocol/openid-connect/certs
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      WORKFORCE_SERVICE_PORT: 8083
+      IDENTITY_SERVICE_URL: http://identity-service:8084
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/8083; printf 'GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\\\"status\\\":\\\"UP\\\"' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      workforce-postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+
+  identity-service:
+    build:
+      context: ./services/identity-service
+    environment:
+      IDENTITY_DATABASE_URL: jdbc:postgresql://identity-postgres:5432/identity
+      IDENTITY_DATABASE_USERNAME: ${IDENTITY_POSTGRES_USER:-identity}
+      IDENTITY_DATABASE_PASSWORD: ${IDENTITY_POSTGRES_PASSWORD:-identity_local}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/ltft/protocol/openid-connect/certs
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      IDENTITY_SERVICE_PORT: 8084
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-ltft}
+      KEYCLOAK_JML_CLIENT_ID: ${KEYCLOAK_JML_CLIENT_ID:-ltft-jml-service}
+      KEYCLOAK_JML_CLIENT_SECRET: ${KEYCLOAK_JML_CLIENT_SECRET:-local-jml-secret-change-me}
+    ports:
+      - "8084:8084"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/8084; printf 'GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\\\"status\\\":\\\"UP\\\"' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      identity-postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  catalog-service:
+    build:
+      context: .
+      dockerfile: services/catalog-service/Dockerfile
+    environment:
+      CATALOG_DATABASE_URL: jdbc:postgresql://catalog-postgres:5432/catalog
+      CATALOG_DATABASE_USERNAME: ${CATALOG_POSTGRES_USER:-catalog}
+      CATALOG_DATABASE_PASSWORD: ${CATALOG_POSTGRES_PASSWORD:-catalog_local}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/ltft/protocol/openid-connect/certs
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      CATALOG_SERVICE_PORT: 8085
+      IDENTITY_SERVICE_URL: http://identity-service:8084
+      CUSTOMER_SERVICE_URL: http://customer-service:8082
+    ports:
+      - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/8085; printf 'GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\\\"status\\\":\\\"UP\\\"' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      catalog-postgres:
+        condition: service_healthy
+      customer-service:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
+  pricing-service:
+    build:
+      context: .
+      dockerfile: services/pricing-service/Dockerfile
+    environment:
+      PRICING_DATABASE_URL: jdbc:postgresql://pricing-postgres:5432/pricing
+      PRICING_DATABASE_USERNAME: ${PRICING_POSTGRES_USER:-pricing}
+      PRICING_DATABASE_PASSWORD: ${PRICING_POSTGRES_PASSWORD:-pricing_local}
+      OIDC_ISSUER_URI: http://localhost:8180/realms/ltft
+      OIDC_JWK_SET_URI: http://keycloak:8080/realms/ltft/protocol/openid-connect/certs
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
+      PRICING_SERVICE_PORT: 8086
+      IDENTITY_SERVICE_URL: http://identity-service:8084
+    ports:
+      - "8086:8086"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c \"exec 3<>/dev/tcp/127.0.0.1/8086; printf 'GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; grep -q '\\\"status\\\":\\\"UP\\\"' <&3\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      pricing-postgres:
+        condition: service_healthy
+      identity-service:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  pickup-postgres-data:
+  customer-postgres-data:
+  workforce-postgres-data:
+  identity-postgres-data:
+  catalog-postgres-data:
+  pricing-postgres-data:
   keycloak-data:
