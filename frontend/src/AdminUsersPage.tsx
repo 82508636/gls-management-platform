@@ -12,7 +12,7 @@ type IdentityUser = {
 }
 
 const roles: Role[] = ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER', 'DRIVER', 'FRONT_DESK']
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+const identityApiUrl = import.meta.env.VITE_IDENTITY_API_URL ?? 'http://localhost:8084/api'
 const emptyJoiner = { username: '', email: '', firstName: '', lastName: '', role: 'OPERATOR' as Role, temporaryPassword: '' }
 
 export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: () => void }) {
@@ -25,7 +25,7 @@ export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: ()
   async function load() {
     setLoading(true); setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/admin/users`)
+      const response = await auth.fetch(`${identityApiUrl}/admin/users`)
       if (!response.ok) throw new Error('users request failed')
       setUsers(await response.json())
     } catch { setError('Não foi possível carregar os utilizadores. Tente novamente.') }
@@ -36,7 +36,7 @@ export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: ()
   async function create(event: FormEvent) {
     event.preventDefault(); setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(joiner) })
+      const response = await auth.fetch(`${identityApiUrl}/admin/users`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(joiner) })
       if (!response.ok) throw new Error('joiner request failed')
       setFormOpen(false); setJoiner(emptyJoiner); await load()
     } catch { setError('Não foi possível criar o utilizador. Tente novamente.') }
@@ -45,7 +45,7 @@ export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: ()
   async function move(user: IdentityUser, role: Role) {
     setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/admin/users/${encodeURIComponent(user.id)}/role`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
+      const response = await auth.fetch(`${identityApiUrl}/admin/users/${encodeURIComponent(user.id)}/role`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }) })
       if (!response.ok) throw new Error('mover request failed')
       await load()
     } catch { setError('Não foi possível alterar o perfil. Tente novamente.') }
@@ -55,7 +55,7 @@ export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: ()
     if (!window.confirm(`Desativar o utilizador ${user.username} e terminar as suas sessões?`)) return
     setError('')
     try {
-      const response = await auth.fetch(`${apiUrl}/admin/users/${encodeURIComponent(user.id)}/leave`, { method: 'POST' })
+      const response = await auth.fetch(`${identityApiUrl}/admin/users/${encodeURIComponent(user.id)}/leave`, { method: 'POST' })
       if (!response.ok) throw new Error('leaver request failed')
       await load()
     } catch { setError('Não foi possível desativar o utilizador. Tente novamente.') }

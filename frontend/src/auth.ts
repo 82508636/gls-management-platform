@@ -140,9 +140,24 @@ async function logout() {
 
 async function authenticatedFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   await refreshIfNeeded()
+  let response = await fetchWithAccessToken(input, init)
+  if (response.status !== 401 || !refreshToken) return response
+
+  try {
+    await refreshAccessToken()
+  } catch {
+    return response
+  }
+  response.body?.cancel().catch(() => undefined)
+  response = await fetchWithAccessToken(input, init)
+  return response
+}
+
+function fetchWithAccessToken(input: RequestInfo | URL, init: RequestInit) {
   const headers = new Headers(init.headers)
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-  return fetch(input, { ...init, headers })
+  const requestInput = input instanceof Request ? input.clone() : input
+  return fetch(requestInput, { ...init, headers })
 }
 
 async function exchangeCode(code: string, verifier: string) {
@@ -162,6 +177,10 @@ async function refreshIfNeeded() {
     clearTokens()
     throw new Error('OIDC session expired')
   }
+  await refreshAccessToken()
+}
+
+async function refreshAccessToken() {
   if (!refreshPromise) {
     refreshPromise = requestTokens(new URLSearchParams({
       grant_type: 'refresh_token',
