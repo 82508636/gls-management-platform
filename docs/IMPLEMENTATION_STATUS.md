@@ -23,6 +23,32 @@ Atualizado em 3 de setembro de 2026.
 - Não existe integração real com a API GLS; o fornecedor logístico continua isolado por uma interface mock.
 - Não existe ainda API Gateway nem contrato de erro único entre todos os serviços.
 
+## Estado P0, P1 e P2
+
+### P0
+
+- **Concluído — P0.1 Segurança e permissões:** helper JWT, conversor de roles, autorização de `HEAD` e matriz backend cobertos pelo reactor Maven verde.
+- **Parcial — P0.2 JML/Keycloak:** Joiner, Mover, Leaver, auditoria e revogação imediata estão implementados; falta compensar a criação parcial no Keycloak quando a password ou atribuição de role falha e definir timeouts explícitos no cliente administrativo.
+- **Concluído — P0.3 Estado inicial do cliente:** qualquer criação resulta num cliente inativo; só `ADMIN` altera o estado pelo endpoint dedicado.
+- **Concluído — P0.4 Paginação:** conteúdo, metadados, pesquisa e filtro usam a página pedida ao backend.
+- **Concluído — P0.5 Sessão OIDC:** recuperação silenciosa, deep-link, refresh partilhado e logout estão implementados sem persistir tokens em `localStorage`.
+
+### P1
+
+- **Pendente — P1.1 PDF:** ainda recebe a coleção completa, não os registos filtrados; falta também validar os acentos portugueses.
+- **Pendente — P1.2 Modal JML:** Cancelar, fechar e clicar no overlay ainda não limpam todos os dados, incluindo a password temporária.
+- **Pendente — P1.3 Operações em curso:** faltam estados `submitting`/`pendingActionId` para impedir pedidos duplicados.
+- **Parcial — P1.4 Conta e pesquisa:** pesquisa e filtros globais no backend estão concluídos; um deep-link da conta ainda depende do cliente já estar na página carregada.
+- **Parcial — P1.5 Países:** o backend aceita países fora do VIES como `NOT_APPLICABLE`, mas o seletor do frontend ainda apresenta apenas o conjunto VIES.
+
+### P2 — automação
+
+- **Concluído:** testes Java de todo o reactor executam em Maven 3.9.11/Java 21 e estão ligados à CI.
+- **Parcial:** existe cenário Playwright de segurança/JML na CI, mas falta voltar a executá-lo sobre este estado consolidado.
+- **Pendente:** testes de componentes frontend com Vitest/React Testing Library, paginação com mais de 50 clientes, integração PostgreSQL/Testcontainers e smoke VIES automatizado opt-in.
+
+Os seis microserviços publicados neste estado usam a versão de desenvolvimento `0.0.1-SNAPSHOT`. A numeração de release deve ser definida antes de produzir a primeira versão imutável.
+
 ## Validação de 3 de setembro de 2026
 
 - Sete bases PostgreSQL acessíveis, incluindo a base do backend legado.
