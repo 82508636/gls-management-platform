@@ -1,8 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { AuthSession } from './auth'
+import { apiUrl } from './api'
 import { ContextualPageHeading } from './ContextualPageHeading'
-
-const apiUrl = import.meta.env.VITE_PRICING_API_URL ?? 'http://localhost:8086/api'
 type PlanStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED'
 type EditorMode = 'idle' | 'create' | 'edit'
 type Bracket = { upToWeightKg: number; price: number }

@@ -10,6 +10,7 @@ Não são permitidas chaves estrangeiras, `JOIN`, repositórios JPA ou acessos S
 
 | Serviço | Responsabilidade | Base própria | Dados principais |
 |---|---|---|---|
+| `api-gateway` | entrada pública, autenticação inicial, limites e encaminhamento | não aplicável | sem dados de negócio; rate limits efémeros em Redis |
 | `identity-service` | JML, revogação e auditoria de acessos | `identity` | estados de acesso e eventos de auditoria |
 | `customer-service` | clientes, destinatários e validação fiscal | `customer` | clientes, contadores de código e destinatários |
 | `pickup-service` | locais operacionais para entrega e levantamento | `pickup` | pontos Pickup e horários |
@@ -18,7 +19,8 @@ Não são permitidas chaves estrangeiras, `JOIN`, repositórios JPA ou acessos S
 | `pricing-service` | tabelas, rotas independentes e simulações | `pricing` | planos, rotas, escalões e cotações |
 | `shipment-service` | envios, recolhas e respetivo histórico | `shipment` | expedições, estados e snapshots financeiros/operacionais |
 
-O Keycloak continua externo aos serviços e é a fonte de identidade e roles. As permissões são novamente validadas em cada serviço; não se confia apenas no futuro gateway.
+O Keycloak continua externo aos serviços e é a fonte de identidade e roles. O API Gateway valida primeiro o JWT; as
+permissões e o estado JML são novamente validados em cada serviço, sem confiar apenas no gateway.
 
 ## Integrações entre serviços
 
@@ -31,13 +33,16 @@ O Keycloak continua externo aos serviços e é a fonte de identidade e roles. As
 
 ```mermaid
 flowchart LR
-    UI[Frontend :5173] --> PICKUP[pickup-service :8081]
-    UI --> CUSTOMER[customer-service :8082]
-    UI --> WORKFORCE[workforce-service :8083]
-    UI --> IDENTITY[identity-service :8084]
-    UI --> CATALOG[catalog-service :8085]
-    UI --> PRICING[pricing-service :8086]
-    LEGACY[backend legado / Envios :8080] -->|POST /internal/v1/pricing/quotes| PRICING
+    UI[Frontend :5173] --> GATEWAY[api-gateway :8090]
+    GATEWAY --> PICKUP[pickup-service :8081]
+    GATEWAY --> CUSTOMER[customer-service :8082]
+    GATEWAY --> WORKFORCE[workforce-service :8083]
+    GATEWAY --> IDENTITY[identity-service :8084]
+    GATEWAY --> CATALOG[catalog-service :8085]
+    GATEWAY --> PRICING[pricing-service :8086]
+    GATEWAY --> LEGACY[backend legado / Envios :8080]
+    GATEWAY --> REDIS[(Redis / rate limits)]
+    LEGACY -->|POST /internal/v1/pricing/quotes| PRICING
     CATALOG -->|POST /internal/v1/customers/existence| CUSTOMER
     PICKUP -->|decisão de acesso| IDENTITY
     CUSTOMER -->|decisão de acesso| IDENTITY
@@ -64,14 +69,14 @@ flowchart LR
 
 ## Migração incremental
 
-1. `pickup-service`: primeira extração, sem dependências de dados externas. O frontend pode mudar apenas este endpoint com `VITE_PICKUP_API_URL`.
+1. `pickup-service`: primeira extração, sem dependências de dados externas.
 2. `customer-service`: mantém Clientes e Destinatários juntos para conservar a criação atómica atual.
 3. `workforce-service`: extrai os catálogos atuais antes da persistência completa de colaboradores.
 4. `catalog-service`: remove a FK a Clientes e substitui-a por referência UUID validada por contrato.
 5. `pricing-service`: passa a devolver cotações completas e imutáveis.
 6. `shipment-service`: última extração, depois dos contratos de Clientes, Catálogo e Preços estarem estáveis.
 7. `identity-service`: separa auditoria/JML do backend legado, mantendo o Keycloak como fornecedor OIDC.
-8. Introdução do API Gateway e remoção final do backend legado.
+8. Introdução do API Gateway concluída; remoção final do backend legado apenas depois de extrair Envios.
 
 Cada extração exige: migração e reconciliação dos dados, execução paralela controlada quando aplicável, testes de contrato, troca do endpoint consumidor, observação e só depois remoção das tabelas legadas.
 
@@ -81,10 +86,8 @@ Cada extração exige: migração e reconciliação dos dados, execução parale
 Cada um tem projeto Maven, imagem Docker, PostgreSQL dedicado, migrations Flyway, validação OIDC, CORS, matriz de
 autorização e testes próprios. A revogação imediata e a role esperada são confirmadas no `identity-service` em todos os
 pedidos autenticados; uma indisponibilidade desse serviço fecha o acesso em vez de o permitir.
-O frontend usa por omissão `http://localhost:8081/api` para Pickup e `http://localhost:8082/api` para
-Clientes, Destinatários e validação fiscal. Catálogo, grupos de serviço e zonas usam `http://localhost:8085/api`.
-As tabelas, rotas e simulações de preços usam `http://localhost:8086/api`.
-Os endereços continuam configuráveis por variáveis Vite.
+O frontend usa apenas `VITE_GATEWAY_API_URL`, por omissão `http://localhost:8090/api`. O gateway encaminha cada rota
+para o serviço proprietário e mantém Envios no backend legado durante a transição.
 
 Clientes e Destinatários foram mantidos no mesmo serviço e na mesma transação. A migração inicial preserva
 UUIDs, códigos e datas e recalcula cada contador de agência a partir do maior código migrado. O utilitário
@@ -120,6 +123,7 @@ o Keycloak e os serviços necessários antes de libertar dependentes. Os endpoin
 
 | Porta | Componente | Persistência |
 |---:|---|---|
+| `8090` | `api-gateway` | sem persistência |
 | `8081` | `pickup-service` | PostgreSQL `pickup`, porta local `5433` |
 | `8082` | `customer-service` | PostgreSQL `customer`, porta local `5434` |
 | `8083` | `workforce-service` | PostgreSQL `workforce`, porta local `5435` |

@@ -43,6 +43,9 @@ jobs:
       DATABASE_USERNAME: gls
       DATABASE_PASSWORD: gls_local
       E2E_APP_URL: http://localhost:5173
+      # Este cenário valida ainda o JML do backend legado. O E2E dedicado ao gateway
+      # será ativado com Redis e os seis serviços no P1.1.9.
+      VITE_GATEWAY_API_URL: http://localhost:8080/api
       PLAYWRIGHT_EXECUTABLE_PATH: /usr/bin/google-chrome
     steps:
       - uses: actions/checkout@v4

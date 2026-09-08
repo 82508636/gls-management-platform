@@ -49,10 +49,31 @@ function Test-Http([string]$Url) {
     }
 }
 
+function Test-Microservices {
+    $healthUrls = @(
+        "http://localhost:8081/actuator/health",
+        "http://localhost:8082/actuator/health",
+        "http://localhost:8083/actuator/health",
+        "http://localhost:8084/actuator/health",
+        "http://localhost:8085/actuator/health",
+        "http://localhost:8086/actuator/health"
+    )
+    foreach ($healthUrl in $healthUrls) {
+        if (-not (Test-Http $healthUrl)) {
+            return $false
+        }
+    }
+    return $true
+}
+
 Import-LocalEnvironment
 
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 & docker info *> $null
-if ($LASTEXITCODE -ne 0) {
+$dockerInfoExitCode = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorActionPreference
+if ($dockerInfoExitCode -ne 0) {
     throw "O Docker Engine não está acessível. Execute este script no PowerShell do utilizador Windows com o Docker Desktop ativo."
 }
 
@@ -87,6 +108,29 @@ if (-not (Test-Http "http://localhost:8080/actuator/health")) {
 }
 Wait-Http "Backend" "http://localhost:8080/actuator/health"
 
+Write-Host "A iniciar microserviços e API Gateway..." -ForegroundColor Cyan
+& docker compose up --detach --build --wait api-gateway
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "O Docker assinalou um health check tardio. A confirmar diretamente os microserviços..." -ForegroundColor Yellow
+    $microservicesDeadline = (Get-Date).AddSeconds(60)
+    do {
+        if (Test-Microservices) {
+            Write-Host "Os microserviços estão disponíveis. A iniciar o API Gateway..." -ForegroundColor Green
+            & docker compose up --detach --no-deps api-gateway
+            if ($LASTEXITCODE -ne 0) {
+                throw "Os microserviços estão disponíveis, mas não foi possível iniciar o API Gateway."
+            }
+            break
+        }
+        Start-Sleep -Seconds 3
+    } while ((Get-Date) -lt $microservicesDeadline)
+
+    if (-not (Test-Microservices)) {
+        throw "Não foi possível iniciar os microserviços e o API Gateway. Consulte 'docker compose logs'."
+    }
+}
+Wait-Http "API Gateway" "http://localhost:8090/actuator/health"
+
 if (-not (Test-Http "http://localhost:5173")) {
     $frontendDirectory = Join-Path $repositoryRoot "frontend"
     $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
@@ -117,6 +161,7 @@ Wait-Http "Frontend" "http://localhost:5173"
 Write-Host "" 
 Write-Host "LTFT Comand Center está operacional." -ForegroundColor Green
 Write-Host "Frontend:  http://localhost:5173"
+Write-Host "Gateway:   http://localhost:8090/actuator/health"
 Write-Host "Backend:   http://localhost:8080/actuator/health"
 Write-Host "Keycloak:  http://localhost:8180/admin"
 Write-Host "Logs:      $runtimeDirectory"

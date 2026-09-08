@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { AuthSession } from './auth'
+import { apiUrl } from './api'
 import { ContextualPageHeading } from './ContextualPageHeading'
 
-const catalogApiUrl = import.meta.env.VITE_CATALOG_API_URL ?? 'http://localhost:8085/api'
-const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL ?? 'http://localhost:8082/api'
+const catalogApiUrl = apiUrl
+const customerApiUrl = apiUrl
 const loadError = 'Não foi possível carregar a informação.'
 const saveError = 'Não foi possível guardar. Confirme os dados indicados.'
 

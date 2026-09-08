@@ -1,5 +1,6 @@
 import { FormEvent, StrictMode, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
+import { apiUrl } from './api'
 import type { Customer, CustomerService } from './domain'
 import { downloadPendingServicesPdf } from './pdfReport'
 import { AuthSession, initializeAuth } from './auth'
@@ -16,9 +17,8 @@ type CustomerForm = Omit<Customer, 'id'>
 type CustomerPage = { content: Customer[]; page: number; size: number; totalElements: number; totalPages: number; first: boolean; last: boolean }
 type ServiceStatus = 'PENDING' | 'PAID' | 'ALL'
 
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
-const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL ?? 'http://localhost:8082/api'
-const workforceApiUrl = import.meta.env.VITE_WORKFORCE_API_URL ?? 'http://localhost:8083/api'
+const customerApiUrl = apiUrl
+const workforceApiUrl = apiUrl
 const GENERIC_LOAD_ERROR = 'Não foi possível carregar a informação. Tente novamente.'
 const GENERIC_SAVE_ERROR = 'Não foi possível guardar. Tente novamente.'
 const emptyForm: CustomerForm = { customerCode:'', abbreviation:'', shippingName:'', agency:'LTFT01', address:'', postalCode:'', locality:'', country:'PT', contactEmail:'', mobile:'', phone:'', billingCountry:'PT', vatNumber:'', billingLegalName:'', billingAddress:'', billingPostalCode:'', billingLocality:'', accountCode:'', billingReference:'', customerType:'COMPANY', responsibleName:'', billingEmail:'', defaultDocument:'INVOICE', exchangeRate:null, currency:'EUR', invoiceByPost:false, documentsByEmail:true, active:false }

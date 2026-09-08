@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { AuthSession } from './auth'
+import { apiUrl } from './api'
 import { ContextualPageHeading } from './ContextualPageHeading'
 import type { AuditedReference } from './CollaboratorManagementPages'
 
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
-const pickupApiUrl = import.meta.env.VITE_PICKUP_API_URL ?? 'http://localhost:8081/api'
-const customerApiUrl = import.meta.env.VITE_CUSTOMER_API_URL ?? 'http://localhost:8082/api'
+const pickupApiUrl = apiUrl
+const customerApiUrl = apiUrl
 
 type PickupPoint = {
   id: string; code: string; designation: string

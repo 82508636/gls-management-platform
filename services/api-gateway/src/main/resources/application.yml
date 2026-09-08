@@ -1,0 +1,92 @@
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8180/realms/ltft}
+          jwk-set-uri: ${OIDC_JWK_SET_URI:http://localhost:8180/realms/ltft/protocol/openid-connect/certs}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:2s}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          default-filters:
+            - SecureHeaders
+            - name: RequestSize
+              args:
+                maxSize: ${GATEWAY_MAX_REQUEST_SIZE:2MB}
+            - name: RequestHeaderSize
+              args:
+                maxSize: ${GATEWAY_MAX_HEADER_SIZE:16KB}
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@authenticatedPrincipalKeyResolver}"
+                redis-rate-limiter.replenishRate: ${GATEWAY_RATE_LIMIT_REPLENISH:20}
+                redis-rate-limiter.burstCapacity: ${GATEWAY_RATE_LIMIT_BURST:40}
+                redis-rate-limiter.requestedTokens: 1
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:2000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:10s}
+            compression: true
+          metrics:
+            enabled: true
+          routes:
+            - id: legacy-customer-services
+              order: -100
+              uri: ${LEGACY_BACKEND_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/customers/*/services
+            - id: legacy-shipments
+              order: -90
+              uri: ${LEGACY_BACKEND_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/shipments/**
+            - id: customer-service
+              uri: ${CUSTOMER_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/customers/**,/api/recipients/**,/api/vat-validations/**
+            - id: pickup-service
+              uri: ${PICKUP_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/pickup-points/**
+            - id: workforce-service
+              uri: ${WORKFORCE_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/reference-data/**
+            - id: identity-service
+              uri: ${IDENTITY_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/admin/users/**
+            - id: catalog-service
+              uri: ${CATALOG_SERVICE_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/operational-services/**,/api/service-groups/**,/api/billing/zones/**
+            - id: pricing-service
+              uri: ${PRICING_SERVICE_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/pricing/**
+
+server:
+  port: ${API_GATEWAY_PORT:8090}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+  max-http-request-header-size: ${GATEWAY_MAX_HEADER_SIZE:16KB}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}

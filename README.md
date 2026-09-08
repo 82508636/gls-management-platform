@@ -4,12 +4,14 @@ Plataforma web de gestão comercial e financeira de envios GLS. A GLS continua a
 
 > A migração incremental para microserviços está documentada em
 > [`docs/MICROSERVICES.md`](docs/MICROSERVICES.md). Pickup, Clientes, Workforce,
-> Identidade, Catálogo e Preços já são serviços autónomos, cada um com a sua base de dados.
+> Identidade, Catálogo e Preços já são serviços autónomos, cada um com a sua base de dados. O acesso do frontend
+> converge no API Gateway documentado em [`docs/API_GATEWAY.md`](docs/API_GATEWAY.md).
 
 ## Estrutura
 
 - `backend/`: backend legado Java 21 + Spring Boot, mantido durante a migração
 - `services/`: microserviços extraídos, cada um com processo e base próprios
+- `services/api-gateway`: entrada HTTP única, autenticação inicial e políticas transversais da API
 - `tools/customer-data-migrator`: migração transacional e não destrutiva de Clientes/Destinatários para a base `customer`
 - `tools/pricing-data-migrator`: migração transacional e não destrutiva de tabelas, rotas e escalões para a base `pricing`
 - `frontend/`: React + TypeScript + Vite
@@ -30,14 +32,21 @@ Plataforma web de gestão comercial e financeira de envios GLS. A GLS continua a
 4. Iniciar o frontend: `cd frontend && npm install && npm run dev`.
 
 O backend legado fica disponível em `http://localhost:8080`; os serviços extraídos usam as portas `8081` a `8086`,
-respetivamente Pickup, Clientes, Colaboradores, Identidade, Catálogo e Preços. O frontend fica em `http://localhost:5173` e o
-Keycloak em `http://localhost:8180`. Cada serviço expõe o seu próprio `/actuator/health`.
+respetivamente Pickup, Clientes, Colaboradores, Identidade, Catálogo e Preços. O API Gateway fica na porta `8090`, o
+frontend em `http://localhost:5173` e o Keycloak em `http://localhost:8180`. Cada serviço expõe o seu próprio
+`/actuator/health`. O frontend usa exclusivamente `VITE_GATEWAY_API_URL`, cujo valor local é
+`http://localhost:8090/api`.
 
 O Compose aguarda pelos `healthchecks` do PostgreSQL, Keycloak e serviços dos quais outros componentes dependem.
 Um serviço Spring só fica saudável depois de aplicar as migrations Flyway e validar o esquema JPA. Para confirmar o
-ambiente, verifique `http://localhost:8081/actuator/health` até `http://localhost:8086/actuator/health`; todos devem
-responder `{"status":"UP"}`. O backend legado da porta `8080` é iniciado separadamente e continua necessário apenas
+ambiente, verifique `http://localhost:8081/actuator/health` até `http://localhost:8086/actuator/health` e
+`http://localhost:8090/actuator/health`; todos devem responder `{"status":"UP"}`. O backend legado da porta `8080` é iniciado separadamente e continua necessário apenas
 para os domínios ainda não extraídos, nomeadamente Envios.
+
+O gateway valida a presença e assinatura do JWT antes do encaminhamento, limita pedidos e cabeçalhos, aplica timeouts,
+CORS e cabeçalhos seguros, e propaga um `X-Correlation-ID`. Os microserviços continuam a validar o token, a revogação
+JML e as roles: o gateway não substitui a autorização do dono de cada domínio. O rate limiting usa Redis e uma chave
+por identidade autenticada. A cache continua desativada até existir uma política que não contorne a revogação imediata.
 
 O realm local `ltft` é importado automaticamente com o cliente público `ltft-web` e os perfis `ADMIN`, `OPERATOR`, `ACCOUNTING`, `CUSTOMER`, `DRIVER` e `FRONT_DESK`. As credenciais administrativas locais vêm de `.env`; os valores de exemplo não devem ser usados em produção.
 
@@ -68,7 +77,7 @@ O script cria envios apenas quando já existem rotas ativas compatíveis com os 
 
 Administradores acedem a `/admin/utilizadores` através da opção `Gerir utilizadores` no menu do cabeçalho. A página permite criar utilizadores com password temporária, substituir o perfil da plataforma e desativar contas com revogação de sessões.
 
-O backend usa o cliente confidencial `ltft-jml-service`. Num realm já existente, crie esse cliente com `Service accounts roles` ativo, configure o segredo definido em `KEYCLOAK_JML_CLIENT_SECRET` e atribua à conta técnica as client roles `manage-users`, `view-users`, `query-users` e `view-realm` do cliente `realm-management`. Não exponha esse segredo no frontend.
+O backend usa o cliente confidencial `ltft-jml-service`. Num realm já existente, crie esse cliente com `Service accounts roles` ativo, configure o segredo definido em `KEYCLOAK_JML_CLIENT_SECRET` e atribua à conta técnica as client roles `manage-users`, `view-users`, `query-users` e `view-realm` do cliente `realm-management`. Não exponha esse segredo no frontend. As chamadas administrativas usam timeouts configuráveis por `KEYCLOAK_CONNECT_TIMEOUT` e `KEYCLOAK_READ_TIMEOUT`. Se um Joiner falhar depois de criar a identidade, a operação elimina compensatoriamente o utilizador parcial e tenta conservar uma decisão local desativada. Mover e Leaver persistem primeiro a nova decisão local numa transação independente: uma falha posterior no Keycloak mantém o acesso fechado e exige repetição administrativa, em vez de voltar a aceitar o token antigo. Falhas de compensação ficam associadas à exceção original para diagnóstico interno sem serem expostas ao frontend.
 
 O primeiro módulo funcional permite criar, listar e editar clientes em `http://localhost:5173/clientes`. A API paginada está disponível em `/api/customers`, com um máximo de 50 clientes por pedido. A pesquisa é executada no backend através de `query` e pode ser combinada com o filtro booleano `active`; código, designação, NIF, contactos, localidade e agência são pesquisáveis.
 

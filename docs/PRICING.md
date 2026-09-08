@@ -6,9 +6,9 @@ As rotas comerciais são configurações autónomas. Não existe uma entidade ou
 
 A solução separa a configuração comercial do futuro processo de expedição. Ainda não existe ligação à API da GLS e a simulação não cria envios nem documentos de faturação.
 
-O domínio corre autonomamente no `pricing-service`, porta `8086`, e é o único proprietário da base PostgreSQL
-`pricing`. O frontend usa `VITE_PRICING_API_URL` e o backend de Envios usa `PRICING_SERVICE_URL`; nenhum consumidor
-consulta diretamente as tabelas desta base.
+O domínio corre autonomamente no `pricing-service`, porta interna `8086`, e é o único proprietário da base PostgreSQL
+`pricing`. O frontend acede-lhe através de `VITE_GATEWAY_API_URL`; o backend de Envios usa `PRICING_SERVICE_URL` para o
+contrato interno. Nenhum consumidor consulta diretamente as tabelas desta base.
 
 ## Modelo
 

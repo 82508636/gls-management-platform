@@ -1,8 +1,9 @@
 import { FormEvent, useMemo, useState } from 'react'
 import { ContextualPageHeading } from './ContextualPageHeading'
 import type { AuthSession } from './auth'
+import { apiUrl } from './api'
 
-const workforceApiUrl = import.meta.env.VITE_WORKFORCE_API_URL ?? 'http://localhost:8083/api'
+const workforceApiUrl = apiUrl
 
 export type AuditedReference = {
   id: string

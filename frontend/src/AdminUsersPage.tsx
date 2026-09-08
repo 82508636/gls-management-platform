@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import type { AuthSession, Role } from './auth'
+import { apiUrl } from './api'
 
 type IdentityUser = {
   id: string
@@ -12,7 +13,7 @@ type IdentityUser = {
 }
 
 const roles: Role[] = ['ADMIN', 'OPERATOR', 'ACCOUNTING', 'CUSTOMER', 'DRIVER', 'FRONT_DESK']
-const identityApiUrl = import.meta.env.VITE_IDENTITY_API_URL ?? 'http://localhost:8084/api'
+const identityApiUrl = apiUrl
 const emptyJoiner = { username: '', email: '', firstName: '', lastName: '', role: 'OPERATOR' as Role, temporaryPassword: '' }
 
 export function AdminUsersPage({ auth, onBack }: { auth: AuthSession; onBack: () => void }) {
