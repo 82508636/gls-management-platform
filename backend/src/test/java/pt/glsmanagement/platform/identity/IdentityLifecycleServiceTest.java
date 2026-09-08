@@ -9,7 +9,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +47,23 @@ class IdentityLifecycleServiceTest {
     }
 
     @Test
+    void joinDeletesTheKeycloakUserWhenLocalPersistenceFails() {
+        var request = new JoinerRequest("new.user", "new.user@example.test", "New", "User",
+                PlatformRole.OPERATOR, "Temporary-Password-123!");
+        var created = user("user-1", "new.user", true, PlatformRole.OPERATOR);
+        when(keycloak.create(request)).thenReturn(created);
+        doThrow(new IllegalStateException("database unavailable"))
+                .when(accessControl).activate("user-1", PlatformRole.OPERATOR);
+
+        assertThatThrownBy(() -> service.join(request, actor))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("database unavailable");
+
+        verify(keycloak).delete("user-1");
+        verify(accessControl).disable("user-1");
+    }
+
+    @Test
     void moveRecordsPreviousAndNewRoles() {
         var before = user("user-1", "new.user", true, PlatformRole.OPERATOR);
         var after = user("user-1", "new.user", true, PlatformRole.ACCOUNTING);
@@ -53,6 +74,10 @@ class IdentityLifecycleServiceTest {
 
         verify(accessControl).activate("user-1", PlatformRole.ACCOUNTING);
         assertAudit("MOVER", "user-1", "OPERATOR", "ACCOUNTING");
+
+        var order = inOrder(accessControl, keycloak);
+        order.verify(accessControl).activate("user-1", PlatformRole.ACCOUNTING);
+        order.verify(keycloak).move("user-1", PlatformRole.ACCOUNTING);
     }
 
     @Test
@@ -66,6 +91,24 @@ class IdentityLifecycleServiceTest {
 
         verify(accessControl).disable("user-1");
         assertAudit("LEAVER", "user-1", "ACCOUNTING", "ACCOUNTING");
+
+        var order = inOrder(accessControl, keycloak);
+        order.verify(accessControl).disable("user-1");
+        order.verify(keycloak).leave("user-1");
+    }
+
+    @Test
+    void leaveDoesNotTouchKeycloakWhenTheFailClosedDecisionCannotBePersisted() {
+        var before = user("user-1", "new.user", true, PlatformRole.OPERATOR);
+        when(keycloak.get("user-1")).thenReturn(before);
+        doThrow(new IllegalStateException("database unavailable"))
+                .when(accessControl).disable("user-1");
+
+        assertThatThrownBy(() -> service.leave("user-1", actor))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("database unavailable");
+
+        verify(keycloak, never()).leave("user-1");
     }
 
     private void assertAudit(String action, String targetId, String previousRoles, String newRoles) {

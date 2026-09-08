@@ -43,3 +43,5 @@ ltft:
       realm: ${KEYCLOAK_REALM:ltft}
       client-id: ${KEYCLOAK_JML_CLIENT_ID:ltft-jml-service}
       client-secret: ${KEYCLOAK_JML_CLIENT_SECRET:local-jml-secret-change-me}
+      connect-timeout: ${KEYCLOAK_CONNECT_TIMEOUT:2s}
+      read-timeout: ${KEYCLOAK_READ_TIMEOUT:5s}

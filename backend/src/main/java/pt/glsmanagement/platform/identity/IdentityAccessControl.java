@@ -2,6 +2,7 @@ package pt.glsmanagement.platform.identity;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import java.util.Set;
 
 @Service
@@ -12,14 +13,14 @@ public class IdentityAccessControl {
         this.repository = repository;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     void activate(String userId, PlatformRole role) {
         var state = repository.findById(userId).orElseGet(() -> IdentityAccessState.active(userId, role));
         state.activate(role);
         repository.save(state);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     void disable(String userId) {
         var state = repository.findById(userId).orElseGet(() -> IdentityAccessState.active(userId, PlatformRole.CUSTOMER));
         state.disable();

@@ -1,13 +1,16 @@
 package pt.glsmanagement.platform.identity;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.*;
 
 @Component
@@ -19,12 +22,25 @@ class KeycloakAdminClient {
     private final String clientId;
     private final String clientSecret;
 
+    @Autowired
     KeycloakAdminClient(RestClient.Builder builder,
                         @Value("${ltft.identity.keycloak.base-url}") String baseUrl,
                         @Value("${ltft.identity.keycloak.realm}") String realm,
                         @Value("${ltft.identity.keycloak.client-id}") String clientId,
-                        @Value("${ltft.identity.keycloak.client-secret}") String clientSecret) {
-        this.http = builder.baseUrl(baseUrl).build();
+                        @Value("${ltft.identity.keycloak.client-secret}") String clientSecret,
+                        @Value("${ltft.identity.keycloak.connect-timeout}") Duration connectTimeout,
+                        @Value("${ltft.identity.keycloak.read-timeout}") Duration readTimeout) {
+        var requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(connectTimeout);
+        requestFactory.setReadTimeout(readTimeout);
+        this.http = builder.baseUrl(baseUrl).requestFactory(requestFactory).build();
+        this.realm = realm;
+        this.clientId = clientId;
+        this.clientSecret = clientSecret;
+    }
+
+    KeycloakAdminClient(RestClient http, String realm, String clientId, String clientSecret) {
+        this.http = http;
         this.realm = realm;
         this.clientId = clientId;
         this.clientSecret = clientSecret;
@@ -51,9 +67,27 @@ class KeycloakAdminClient {
         URI location = result.getHeaders().getLocation();
         if (location == null) throw new IdentityOperationException("Keycloak did not return the user identifier");
         String userId = location.getPath().substring(location.getPath().lastIndexOf('/') + 1);
-        resetPassword(userId, request.temporaryPassword());
-        replacePlatformRoles(userId, request.role());
-        return get(userId);
+        try {
+            resetPassword(userId, request.temporaryPassword());
+            replacePlatformRoles(userId, request.role());
+            return get(userId);
+        } catch (RuntimeException failure) {
+            compensateCreatedUser(userId, failure);
+            throw failure;
+        }
+    }
+
+    void delete(String userId) {
+        http.delete().uri("/admin/realms/{realm}/users/{id}", realm, userId)
+                .headers(headers -> headers.setBearerAuth(token())).retrieve().toBodilessEntity();
+    }
+
+    private void compensateCreatedUser(String userId, RuntimeException originalFailure) {
+        try {
+            delete(userId);
+        } catch (RuntimeException compensationFailure) {
+            originalFailure.addSuppressed(compensationFailure);
+        }
     }
 
     IdentityUserResponse move(String userId, PlatformRole role) {

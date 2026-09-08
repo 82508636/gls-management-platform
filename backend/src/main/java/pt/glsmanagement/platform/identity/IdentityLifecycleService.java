@@ -23,16 +23,21 @@ class IdentityLifecycleService {
     @Transactional
     IdentityUserResponse join(JoinerRequest request, Jwt actor) {
         var user = keycloak.create(request);
-        accessControl.activate(user.id(), request.role());
-        record(actor, "JOINER", user, "", roles(user), "Utilizador criado e ativado");
-        return user;
+        try {
+            accessControl.activate(user.id(), request.role());
+            record(actor, "JOINER", user, "", roles(user), "Utilizador criado e ativado");
+            return user;
+        } catch (RuntimeException failure) {
+            compensateJoiner(user.id(), failure);
+            throw failure;
+        }
     }
 
     @Transactional
     IdentityUserResponse move(String id, MoverRequest request, Jwt actor) {
         var before = keycloak.get(id);
+        accessControl.activate(id, request.role());
         var user = keycloak.move(id, request.role());
-        accessControl.activate(user.id(), request.role());
         record(actor, "MOVER", user, roles(before), roles(user), "Perfis da plataforma substituídos");
         return user;
     }
@@ -40,8 +45,8 @@ class IdentityLifecycleService {
     @Transactional
     IdentityUserResponse leave(String id, Jwt actor) {
         var before = keycloak.get(id);
+        accessControl.disable(id);
         var user = keycloak.leave(id);
-        accessControl.disable(user.id());
         record(actor, "LEAVER", user, roles(before), roles(user), "Utilizador desativado e sessões terminadas");
         return user;
     }
@@ -49,6 +54,19 @@ class IdentityLifecycleService {
     private void record(Jwt actor, String action, IdentityUserResponse user, String previous, String next, String details) {
         audit.save(IdentityAuditEvent.create(actor.getSubject(), actor.getClaimAsString("preferred_username"), action,
                 user.id(), user.username(), previous, next, details));
+    }
+
+    private void compensateJoiner(String userId, RuntimeException originalFailure) {
+        try {
+            keycloak.delete(userId);
+        } catch (RuntimeException compensationFailure) {
+            originalFailure.addSuppressed(compensationFailure);
+        }
+        try {
+            accessControl.disable(userId);
+        } catch (RuntimeException compensationFailure) {
+            originalFailure.addSuppressed(compensationFailure);
+        }
     }
 
     private static String roles(IdentityUserResponse user) {
